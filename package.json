@@ -1,0 +1,67 @@
+{
+  "name": "alora-hayat",
+  "description": "Türkçe tek oyunculu yaşam simülasyonu",
+  "author": "Alora Hayat",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hybumc/alora-hayat.git"
+  },
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test",
+    "desktop:dev": "cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:1420 concurrently -k -s first \"npm:dev\" \"wait-on http://127.0.0.1:1420 && electron .\"",
+    "desktop:dist": "npm run build && electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0",
+    "vite": "^6.4.1",
+    "wait-on": "^8.0.4"
+  },
+  "build": {
+    "appId": "tr.alora.hayat",
+    "productName": "Alora Hayat",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "artifactName": "Alora-Hayat-Setup-${version}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Alora Hayat",
+      "uninstallDisplayName": "Alora Hayat",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    }
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}
