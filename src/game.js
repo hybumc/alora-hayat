@@ -51,6 +51,9 @@ function createFinance() {
     loan: null,
     stocks: stockMarket.map((stock) => ({ symbol: stock.symbol, price: stock.initialPrice, owned: 0, lastChange: 0 })),
     business: null,
+    businesses: [],
+    transactions: [],
+    savingsRate: 0.035,
     contestWins: 0,
     contestEntries: 0,
   };
@@ -87,6 +90,44 @@ export function migrateLife(life) {
     life.feed = (life.feed || []).map((item) => ({ ...item, text: cleanLegacyText(item.text) }));
     if (life.lastEvent?.message) life.lastEvent.message = cleanLegacyText(life.lastEvent.message);
   }
+  if (life.version === 2) {
+    const businesses = Array.isArray(life.finance?.businesses) ? life.finance.businesses : [];
+    if (life.finance?.business && !businesses.some((item) => item.name === life.finance.business.name)) {
+      businesses.push({ ...life.finance.business, id: `company-${businesses.length + 1}` });
+    }
+    life.finance = {
+      ...createFinance(),
+      ...life.finance,
+      businesses: businesses.map((item, index) => ({
+        ...item,
+        id: item.id || `company-${index + 1}`,
+        product: item.product || item.sector,
+      })),
+      transactions: Array.isArray(life.finance?.transactions) ? life.finance.transactions : [],
+      savingsRate: Number.isFinite(life.finance?.savingsRate) ? life.finance.savingsRate : 0.035,
+    };
+    life.finance.business = life.finance.businesses[life.finance.businesses.length - 1] || null;
+    life.education = {
+      ...life.education,
+      schoolAverage: Number.isFinite(life.education.schoolAverage) ? life.education.schoolAverage : 65,
+      mockExams: Array.isArray(life.education.mockExams) ? life.education.mockExams : [],
+      pendingExam: life.education.pendingExam || null,
+    };
+    life.relationship = life.relationship ? {
+      ...life.relationship,
+      sharedMoments: Number.isInteger(life.relationship.sharedMoments) ? life.relationship.sharedMoments : 0,
+      gifts: Number.isInteger(life.relationship.gifts) ? life.relationship.gifts : 0,
+      lastAction: life.relationship.lastAction || null,
+      actionsThisAge: Number.isInteger(life.relationship.actionsThisAge) ? life.relationship.actionsThisAge : 0,
+      actionAge: Number.isInteger(life.relationship.actionAge) ? life.relationship.actionAge : life.age,
+    } : null;
+    life.socialMedia = {
+      ...life.socialMedia,
+      postsThisAge: Number.isInteger(life.socialMedia?.postsThisAge) ? life.socialMedia.postsThisAge : 0,
+      lastPostAge: Number.isInteger(life.socialMedia?.lastPostAge) ? life.socialMedia.lastPostAge : null,
+    };
+    life.version = 3;
+  }
   return life;
 }
 
@@ -94,13 +135,18 @@ export function isValidLife(life) {
   const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
   const integer = (value) => Number.isInteger(value) && value >= 0;
   const finite = (value) => Number.isFinite(value) && value >= 0;
-  if (!record(life) || life.version !== 2 || typeof life.name !== "string" ||
+  if (!record(life) || life.version !== 3 || typeof life.name !== "string" ||
       typeof life.firstName !== "string" || typeof life.lastName !== "string" ||
       typeof life.birthDate !== "string" || !integer(life.age) || !finite(life.money) || !finite(life.bank)) return false;
   if (!record(life.stats) || !["health", "happiness", "intelligence", "discipline", "social"].every(
     (key) => Number.isFinite(life.stats[key]) && life.stats[key] >= 0 && life.stats[key] <= 100,
   )) return false;
   if (!record(life.education) || typeof life.education.stage !== "string" || !integer(life.education.grade) ||
+      !Number.isFinite(life.education.schoolAverage) || life.education.schoolAverage < 0 || life.education.schoolAverage > 100 ||
+      !Array.isArray(life.education.mockExams) ||
+      !(life.education.pendingExam === null || (record(life.education.pendingExam) &&
+        typeof life.education.pendingExam.type === "string" && Array.isArray(life.education.pendingExam.questions) &&
+        life.education.pendingExam.questions.length === 3)) ||
       !record(life.career) || !(life.career.job === null || typeof life.career.job === "string") ||
       !finite(life.career.salary) || !integer(life.career.experience) ||
       !record(life.career.license) || typeof life.career.license.status !== "string" ||
@@ -108,7 +154,8 @@ export function isValidLife(life) {
         life.career.license.score >= 0 && life.career.license.score <= 100))) return false;
   if (life.relationship !== null && (!record(life.relationship) || typeof life.relationship.name !== "string" ||
       !integer(life.relationship.years) || !Number.isFinite(life.relationship.closeness) ||
-      life.relationship.closeness < 0 || life.relationship.closeness > 100)) return false;
+      life.relationship.closeness < 0 || life.relationship.closeness > 100 ||
+      !integer(life.relationship.sharedMoments) || !integer(life.relationship.gifts))) return false;
   if (!record(life.family) || !integer(life.family.sharedMoments) || !Array.isArray(life.family.members) ||
       !life.family.members.some((member) => member.id === "mother") ||
       !life.family.members.some((member) => member.id === "father") ||
@@ -119,6 +166,7 @@ export function isValidLife(life) {
   if (!Array.isArray(life.education.exams) ||
       !record(life.socialMedia) || !finite(life.socialMedia.followers) || !finite(life.socialMedia.views) ||
       !finite(life.socialMedia.likes) || !finite(life.socialMedia.posts) || !finite(life.socialMedia.incomeMonthly) ||
+      !integer(life.socialMedia.postsThisAge) ||
       !record(life.finance) || !(life.finance.loan === null || (record(life.finance.loan) &&
         finite(life.finance.loan.balance) && Number.isFinite(life.finance.loan.interestRate) &&
         life.finance.loan.interestRate >= 0 && integer(life.finance.loan.years))) ||
@@ -130,6 +178,13 @@ export function isValidLife(life) {
         finite(life.finance.business.monthlyRevenue) && finite(life.finance.business.monthlyCost) &&
         integer(life.finance.business.months) && integer(life.finance.business.lossYears) &&
         typeof life.finance.business.closed === "boolean" && typeof life.finance.business.bankrupt === "boolean")) ||
+      !Array.isArray(life.finance.businesses) ||
+      !life.finance.businesses.every((business) => record(business) && typeof business.id === "string" &&
+        typeof business.name === "string" && typeof business.sector === "string" && typeof business.product === "string" &&
+        finite(business.monthlyRevenue) && finite(business.monthlyCost) && integer(business.months) &&
+        integer(business.lossYears) && typeof business.closed === "boolean" && typeof business.bankrupt === "boolean") ||
+      !Array.isArray(life.finance.transactions) ||
+      !Number.isFinite(life.finance.savingsRate) || life.finance.savingsRate < 0 || life.finance.savingsRate > 0.2 ||
       !integer(life.finance.contestWins) || !integer(life.finance.contestEntries) ||
       !integer(life.activitiesCompleted)) return false;
   if (!Array.isArray(life.feed) || !Array.isArray(life.history) ||
@@ -156,7 +211,7 @@ export function createLife({ firstName, lastName, birthDate }) {
     throw new Error("Geçerli ve geçmiş bir doğum tarihi seç.");
   }
   return {
-    version: 2,
+    version: 3,
     name,
     firstName: firstName.trim(),
     lastName: lastName.trim(),
@@ -168,10 +223,11 @@ export function createLife({ firstName, lastName, birthDate }) {
     education: {
       stage: "Okul öncesi", grade: 0, enrolled: null, exam: null, university: null,
       exams: [], schoolPlacement: null, lgsScore: null, yksScore: null, program: null,
+      schoolAverage: 65, mockExams: [], pendingExam: null,
     },
     career: { job: null, salary: 0, experience: 0, professionId: null, license: { status: "Alınmadı", score: null } },
     family: createFamily(firstName.trim()),
-    socialMedia: { followers: 0, views: 0, likes: 0, posts: 0, incomeMonthly: 0 },
+    socialMedia: { followers: 0, views: 0, likes: 0, posts: 0, incomeMonthly: 0, postsThisAge: 0, lastPostAge: null },
     finance: createFinance(),
     activitiesCompleted: 0,
     relationship: null,
@@ -439,6 +495,144 @@ export function takeExam(life, type, subject = "") {
   return { ...result, message };
 }
 
+const examQuestions = {
+  "Türkçe": [
+    { prompt: "“Özenle” sözcüğünün yakın anlamlısı hangisidir?", choices: ["Dikkatlice", "Rastgele", "Hızlıca"], answer: 0 },
+    { prompt: "“Kitaplar masanın üzerindeydi.” cümlesinde yüklem hangisidir?", choices: ["Kitaplar", "Masanın", "Üzerindeydi"], answer: 2 },
+    { prompt: "Hangisi doğru yazılmıştır?", choices: ["Herşey", "Birçok", "Yanlız"], answer: 1 },
+  ],
+  "Matematik": [
+    { prompt: "Bir ürün 240 TL iken %25 indirimle kaç TL olur?", choices: ["180", "200", "215"], answer: 0 },
+    { prompt: "3x + 5 = 20 ise x kaçtır?", choices: ["3", "5", "8"], answer: 1 },
+    { prompt: "Kenarları 6 ve 8 cm olan dikdörtgenin alanı kaç cm²?", choices: ["28", "42", "48"], answer: 2 },
+  ],
+  "Fen Bilimleri": [
+    { prompt: "Suyun deniz seviyesinde kaynama sıcaklığı kaç °C'tir?", choices: ["90", "100", "110"], answer: 1 },
+    { prompt: "Bitkiler fotosentez sırasında hangi gazı kullanır?", choices: ["Oksijen", "Azot", "Karbondioksit"], answer: 2 },
+    { prompt: "Elektrik akımını ölçen araç hangisidir?", choices: ["Ampermetre", "Termometre", "Barometre"], answer: 0 },
+  ],
+  "Sosyal Bilgiler": [
+    { prompt: "Türkiye Büyük Millet Meclisi hangi yıl açılmıştır?", choices: ["1919", "1920", "1923"], answer: 1 },
+    { prompt: "Haritada yön bulmak için kullanılan temel araç hangisidir?", choices: ["Pusula", "Barometre", "Termometre"], answer: 0 },
+    { prompt: "Yerel yönetimlerin başında hangi görevli bulunur?", choices: ["Vali", "Belediye başkanı", "Kaymakam"], answer: 1 },
+  ],
+  "İngilizce": [
+    { prompt: "“I have lived here ___ 2020.” boşluğuna ne gelir?", choices: ["since", "for", "during"], answer: 0 },
+    { prompt: "“Carefully” sözcüğünün anlamı nedir?", choices: ["Dikkatlice", "Cesurca", "Nadiren"], answer: 0 },
+    { prompt: "“She ___ to school every day.” boşluğuna ne gelir?", choices: ["go", "goes", "going"], answer: 1 },
+  ],
+  "Genel Yetenek": [
+    { prompt: "Dizi: 2, 6, 12, 20, ? Sıradaki sayı hangisi?", choices: ["28", "30", "32"], answer: 1 },
+    { prompt: "Bir sınıfta 12 kız ve 8 erkek var. Öğrencilerin kaçta kaçı erkektir?", choices: ["2/5", "3/5", "1/2"], answer: 0 },
+    { prompt: "Bir işi 4 kişi 6 günde bitiriyorsa aynı hızla 8 kişi kaç günde bitirir?", choices: ["2", "3", "4"], answer: 1 },
+  ],
+  "LGS": [
+    { prompt: "Bir sayının 3 katının 7 eksiği 20'dir. Bu sayı kaçtır?", choices: ["7", "9", "11"], answer: 1 },
+    { prompt: "DNA'nın hücrede bulunduğu temel yapı hangisidir?", choices: ["Çekirdek", "Ribozom", "Hücre zarı"], answer: 0 },
+    { prompt: "“Özgürlük” sözcüğünün zıt anlamlısı hangisidir?", choices: ["Bağımsızlık", "Tutsaklık", "Seçim"], answer: 1 },
+  ],
+  "YKS": [
+    { prompt: "f(x)=2x²−3x ise f(2) kaçtır?", choices: ["2", "4", "8"], answer: 0 },
+    { prompt: "Bir maddenin pH değeri 2 ise bu madde için hangisi doğrudur?", choices: ["Asidiktir", "Nötrdür", "Baziktir"], answer: 0 },
+    { prompt: "Bir üçgende iç açıların toplamı kaç derecedir?", choices: ["90", "180", "360"], answer: 1 },
+  ],
+  "Ehliyet": [
+    { prompt: "Kontrolsüz kavşağa yaklaşırken ilk olarak ne yapılmalıdır?", choices: ["Hız artırılır", "Hız azaltılıp geçiş hakkı kontrol edilir", "Korna çalınıp devam edilir"], answer: 1 },
+    { prompt: "Kırmızı ışıkta sürücünün davranışı ne olmalıdır?", choices: ["Durmak", "Yavaşlayıp geçmek", "Yalnızca korna çalmak"], answer: 0 },
+    { prompt: "Emniyet kemeri kimler için kullanılmalıdır?", choices: ["Yalnızca sürücü", "Ön koltuktakiler", "Araçtaki herkes"], answer: 2 },
+  ],
+  "Kamu Bilgisi": [
+    { prompt: "Kamu hizmetlerinde temel ilkelerden biri hangisidir?", choices: ["Eşitlik ve tarafsızlık", "Kişiye göre işlem", "Bilgiyi saklama"], answer: 0 },
+    { prompt: "Bir vatandaşın başvurusu alındığında ne yapılmalıdır?", choices: ["Kayıt altına alıp süresinde yanıtlamak", "Yanıtsız bırakmak", "Sözlü olarak geri çevirmek"], answer: 0 },
+    { prompt: "Kamu kaynakları nasıl kullanılmalıdır?", choices: ["Kişisel ihtiyaçlar için", "Amacına uygun ve hesap verebilir biçimde", "Kayıt tutulmadan"], answer: 1 },
+  ],
+};
+
+const examAgeLimits = { written: 7, middle: 12, lgs: 14, yks: 18, license: 18, "civil-service": 18, mock: 10 };
+
+export function beginExam(life, type, subject = "") {
+  const minimumAge = examAgeLimits[type];
+  if (minimumAge === undefined) throw new Error("Bu sınav bulunamadı.");
+  if (life.age < minimumAge) throw new Error(`Bu sınava ${minimumAge} yaşında girebilirsin.`);
+  if (life.education.pendingExam) throw new Error("Önce devam eden sınavını tamamla.");
+  if (type === "written" && !examQuestions[subject]) throw new Error("Bu ders için sınav sorusu bulunamadı.");
+  if (type === "mock" && life.age < 10) throw new Error("Deneme sınavları 10 yaşında açılır.");
+  if (type === "mock" && life.education.mockExams.some((exam) => exam.age === life.age)) {
+    throw new Error("Bu yaşında deneme sınavına zaten girdin. Yeni deneme için yaş atla.");
+  }
+  if (type === "license" && life.career.license.status === "Aldı") throw new Error("Ehliyet sınavını zaten başarıyla geçtin.");
+  if (["written", "middle", "lgs", "yks", "license", "civil-service"].includes(type) &&
+      life.education.exams.some((exam) => exam.age === life.age && exam.type === type &&
+        (type !== "written" || exam.subject === subject))) {
+    throw new Error("Bu sınava bu yaşında zaten girdin.");
+  }
+  const fee = type === "license" ? 1800 : type === "civil-service" ? 250 : 0;
+  if (life.money < fee) throw new Error(`Sınav ücreti için ${fee.toLocaleString("tr-TR")} ₺ gerekiyor.`);
+  if (fee) {
+    life.money -= fee;
+    recordTransaction(life, "expense", fee, type === "license" ? "Ehliyet sınavı ücreti" : "Kamu sınavı ücreti");
+  }
+  const questionSet = type === "written"
+    ? examQuestions[subject]
+    : type === "lgs"
+      ? examQuestions.LGS
+      : type === "yks"
+        ? examQuestions.YKS
+    : type === "license"
+      ? examQuestions.Ehliyet
+      : type === "civil-service"
+        ? examQuestions["Kamu Bilgisi"]
+        : type === "mock"
+          ? examQuestions["Genel Yetenek"]
+          : examQuestions.Matematik;
+  life.education.pendingExam = {
+    type,
+    subject: type === "written" ? subject : type === "mock" ? "Genel Yetenek denemesi" : "",
+    questions: questionSet.map(({ prompt, choices, answer }) => ({ prompt, choices, answer })),
+  };
+  return life.education.pendingExam;
+}
+
+export function submitExam(life, answers) {
+  const pending = life.education.pendingExam;
+  if (!pending) throw new Error("Tamamlanacak bir sınav yok.");
+  if (!Array.isArray(answers) || answers.length !== pending.questions.length ||
+      answers.some((answer, index) => !Number.isInteger(Number(answer)) ||
+        Number(answer) < 0 || Number(answer) >= pending.questions[index].choices.length)) {
+    throw new Error("Devam etmek için üç sorunun da cevabını seç.");
+  }
+  const correct = answers.reduce((count, answer, index) =>
+    count + (Number(answer) === pending.questions[index].answer ? 1 : 0), 0);
+  const { type, subject } = pending;
+  const maxScore = ["lgs", "yks"].includes(type) ? 500 : 100;
+  const passScore = type === "license" ? 60 : type === "civil-service" ? 65 : 50;
+  const studyBoost = type === "yks" && life.education.exam === "YKS: hazırlandı" ? 30
+    : type === "yks" && life.education.exam === "YKS: dengeli hazırlandı" ? 15 : 0;
+  const quizScore = Math.round((correct / pending.questions.length) * (maxScore * 0.72));
+  const aptitude = type === "lgs" || type === "yks"
+    ? life.stats.intelligence * 0.75 + life.stats.discipline * 0.55 + life.education.schoolAverage * 0.08
+    : life.stats.intelligence * 0.35 + life.stats.discipline * 0.25 +
+      (type === "written" || type === "mock" ? life.education.schoolAverage * 0.12 : 0);
+  const score = Math.min(maxScore, Math.max(0, Math.round(quizScore + aptitude + studyBoost + randomInt(0, maxScore * 0.08))));
+  const passed = score >= passScore;
+  const result = { type, subject, age: life.age, score, maxScore, passed, correct, total: pending.questions.length };
+  life.education.pendingExam = null;
+  life.education.exams.push(result);
+  if (type === "written" || type === "mock") {
+    life.education.schoolAverage = Math.round((life.education.schoolAverage * 0.7 + score * 0.3) * 10) / 10;
+    if (type === "mock") life.education.mockExams.push({ age: life.age, score, correct, total: pending.questions.length });
+  }
+  if (type === "lgs") life.education.lgsScore = score;
+  if (type === "yks") life.education.yksScore = score;
+  if (type === "license") life.career.license = { status: passed ? "Aldı" : "Başarısız", score };
+  const examName = type === "written" ? `${subject} yazılısı`
+    : type === "mock" ? "Deneme sınavı"
+      : ({ middle: "Ortaokul değerlendirmesi", lgs: "LGS", yks: "YKS", license: "Ehliyet sınavı", "civil-service": "Kamu personeli sınavı" })[type];
+  const message = `${examName}: ${score}/${maxScore} puan · ${correct}/${pending.questions.length} doğru${passed ? " · Başarılı" : ""}.`;
+  addFeed(life, "📝", message);
+  return { ...result, message };
+}
+
 export function chooseUniversityProgram(life, programId) {
   if (!Number.isInteger(life.education.yksScore)) throw new Error("Önce YKS'ye girip puanını görmelisin.");
   const program = universityPrograms.find((item) => item.id === programId);
@@ -455,8 +649,10 @@ export function chooseUniversityProgram(life, programId) {
   return message;
 }
 
-export function closeBusiness(life) {
-  const business = life.finance.business;
+export function closeBusiness(life, businessId = null) {
+  const business = businessId
+    ? life.finance.businesses.find((item) => item.id === businessId)
+    : life.finance.businesses.find((item) => item.id === life.finance.business?.id) || life.finance.business;
   if (!business || business.closed || business.bankrupt) throw new Error("Kapatılabilecek aktif bir şirketin yok.");
   business.closed = true;
   const message = `${business.name} şirketini kapattın. Kuruluş gideri geri alınmadı.`;
@@ -521,6 +717,42 @@ export function performFamilyAction(life, { action, memberId, amount, giftId } =
   return { message, icon };
 }
 
+export function performRelationshipAction(life, action, options = {}) {
+  if (!canDo(life, "date")) throw new Error("İlişki etkinlikleri 16 yaşında açılır.");
+  const relationship = life.relationship;
+  if (!relationship) throw new Error("Önce biriyle tanışıp ilişki kurmalısın.");
+  if (relationship.actionAge !== life.age) {
+    relationship.actionAge = life.age;
+    relationship.actionsThisAge = 0;
+  }
+  if (relationship.actionsThisAge >= 4) throw new Error("Bu yıl birlikte dört etkinlik yaptınız. Yeni planlar için yaş atlayabilirsin.");
+  const plans = {
+    conversation: { name: "Uzun bir sohbet", cost: 0, bond: 3, happiness: 2 },
+    date: { name: "Birlikte akşam yemeği", cost: 450, bond: 6, happiness: 5 },
+    apology: { name: "Gönül alma konuşması", cost: 80, bond: 5, happiness: 1 },
+    celebration: { name: "Özel bir günü kutlama", cost: 900, bond: 9, happiness: 7 },
+    trip: { name: "Hafta sonu gezisi", cost: 2400, bond: 12, happiness: 9 },
+    family: { name: "Ailelerle tanışma", cost: 350, bond: 7, happiness: 4, minimumAge: 18 },
+  };
+  const plan = plans[action];
+  if (!plan) throw new Error("Bu ilişki etkinliği bulunamadı.");
+  if (plan.minimumAge && life.age < plan.minimumAge) throw new Error(`Bu etkinlik ${plan.minimumAge} yaşında açılır.`);
+  if (life.money < plan.cost) throw new Error(`${plan.name} için ${plan.cost.toLocaleString("tr-TR")} ₺ gerekiyor.`);
+  life.money -= plan.cost;
+  relationship.closeness = clamp(relationship.closeness + plan.bond);
+  relationship.sharedMoments += 1;
+  relationship.actionsThisAge += 1;
+  relationship.lastAction = action;
+  life.stats.happiness = clamp(life.stats.happiness + plan.happiness);
+  life.stats.social = clamp(life.stats.social + (action === "conversation" ? 1 : 0));
+  if (action === "celebration") relationship.gifts += 1;
+  if (plan.cost) recordTransaction(life, "expense", plan.cost, plan.name);
+  const message = `${relationship.name} ile ${plan.name.toLocaleLowerCase("tr-TR")} yaptın. Yakınlığınız ${relationship.closeness}/100 oldu; yaşın değişmedi.`;
+  addFeed(life, action === "trip" ? "🧳" : action === "family" ? "🏡" : "💞", message);
+  life.history.push({ age: life.age, event: "İlişki", choice: plan.name });
+  return message;
+}
+
 export function enterContest(life, contestId) {
   const contest = contestTypes.find((item) => item.id === contestId);
   if (!contest) throw new Error("Yarışma bulunamadı.");
@@ -555,6 +787,7 @@ export function manageLoan(life, action, amount) {
     life.finance.loan = life.finance.loan || { balance: 0, interestRate: 0.18, years: 0 };
     life.finance.loan.balance += value;
     life.money += value;
+    recordTransaction(life, "credit", value, "Kredi kullanımı");
     const message = `${value.toLocaleString("tr-TR")} ₺ kredi hesabına geçti. Yıllık faiz oranı %18.`;
     addFeed(life, "🏦", message);
     return message;
@@ -566,6 +799,7 @@ export function manageLoan(life, action, amount) {
     const payment = Math.min(value, loan.balance);
     loan.balance -= payment;
     life.money -= payment;
+    recordTransaction(life, "expense", payment, "Kredi borcu ödemesi");
     if (loan.balance === 0) life.finance.loan = null;
     const message = `${payment.toLocaleString("tr-TR")} ₺ kredi borcunu ödedin.`;
     addFeed(life, "🏦", message);
@@ -585,6 +819,7 @@ export function tradeStock(life, symbol, action, shares) {
     if (cost > life.money) throw new Error(`Bu alım için ${cost.toLocaleString("tr-TR")} ₺ gerekiyor.`);
     life.money -= cost;
     stock.owned += quantity;
+    recordTransaction(life, "expense", cost, `${quantity} adet ${marketItem.name} alımı`);
     const message = `${quantity} adet ${marketItem.name} hissesini ${cost.toLocaleString("tr-TR")} ₺ karşılığında aldın.`;
     addFeed(life, "📈", message);
     return message;
@@ -594,6 +829,7 @@ export function tradeStock(life, symbol, action, shares) {
     const total = stock.price * quantity;
     stock.owned -= quantity;
     life.money += total;
+    recordTransaction(life, "income", total, `${quantity} adet ${marketItem.name} satışı`);
     const message = `${quantity} adet ${marketItem.name} hissesini ${total.toLocaleString("tr-TR")} ₺ karşılığında sattın.`;
     addFeed(life, "📉", message);
     return message;
@@ -601,20 +837,24 @@ export function tradeStock(life, symbol, action, shares) {
   throw new Error("Hisse işlemi bulunamadı.");
 }
 
+function recordTransaction(life, type, amount, description) {
+  life.finance.transactions.unshift({ age: life.age, type, amount, description });
+  life.finance.transactions = life.finance.transactions.slice(0, 30);
+}
+
 export function startBusiness(life, sectorId, name) {
   if (life.age < 18) throw new Error("Şirket kurmak için en az 18 yaşında olmalısın.");
-  if (life.finance.business && !life.finance.business.closed && !life.finance.business.bankrupt) {
-    throw new Error("Aktif bir şirketin var. Önce kapat veya iflas sürecini tamamla.");
-  }
   const sector = businessSectors.find((item) => item.id === sectorId);
   const companyName = String(name || "").trim();
   if (!sector || companyName.length < 2 || companyName.length > 30) throw new Error("Şirket adı 2-30 karakter olmalı ve bir sektör seçmelisin.");
   if (life.money < sector.setup) throw new Error(`Şirketi kurmak için ${sector.setup.toLocaleString("tr-TR")} ₺ gerekiyor.`);
   life.money -= sector.setup;
   const skillMultiplier = 0.75 + life.stats.discipline / 250 + life.stats.social / 350;
-  life.finance.business = {
+  const business = {
+    id: `company-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     name: companyName,
     sector: sector.name,
+    product: sector.product,
     monthlyRevenue: Math.round(sector.monthlyRevenue * skillMultiplier),
     monthlyCost: sector.monthlyCost,
     months: 0,
@@ -622,6 +862,9 @@ export function startBusiness(life, sectorId, name) {
     closed: false,
     bankrupt: false,
   };
+  life.finance.businesses.push(business);
+  life.finance.business = business;
+  recordTransaction(life, "expense", sector.setup, `${companyName} şirket kuruluşu`);
   const message = `${companyName} şirketini kurdun. İlk yıl gelir-gider dengesini takip et.`;
   addFeed(life, "🏢", message);
   return message;
@@ -630,17 +873,20 @@ export function startBusiness(life, sectorId, name) {
 export function applyForCareer(life, professionId) {
   const profession = professions.find((item) => item.id === professionId);
   if (!profession) throw new Error("Meslek bulunamadı.");
+  if (life.career.job) throw new Error("Yeni bir işe geçmeden önce mevcut işinden ayrılmalısın.");
   const requirement = careerRequirement(life, profession);
   if (requirement) throw new Error(requirement);
   if (profession.exam) {
-    const result = takeExam(life, "civil-service");
-    if (!result.passed) throw new Error(`Kamu sınavında ${result.score}/100 aldın; en az 65 puan gerekiyor.`);
+    const result = life.education.exams.filter((exam) => exam.type === "civil-service").at(-1);
+    if (!result) throw new Error("Önce Kariyer bölümünden kamu personeli sınavına gir.");
+    if (!result.passed) throw new Error(`Kamu sınavındaki ${result.score}/100 puanın bu kadro için yeterli değil. Yeniden sınava hazırlan.`);
   } else if (Math.random() > Math.min(0.95, 0.55 + life.stats.discipline / 250)) {
     throw new Error("Görüşme olumlu geçmedi. Becerilerini geliştirip yeniden başvurabilirsin.");
   }
   life.career.job = profession.name;
   life.career.salary = profession.salary;
   life.career.professionId = profession.id;
+  recordTransaction(life, "income", profession.salary, `${profession.name} işe giriş · aylık maaş`);
   const message = `${profession.name} olarak işe alındın. Aylık maaşın ${profession.salary.toLocaleString("tr-TR")} ₺.`;
   addFeed(life, "💼", message);
   return message;
@@ -668,22 +914,32 @@ function updateEconomyForYear(life) {
     loan.balance = Math.round(loan.balance * (1 + loan.interestRate));
     loan.years += 1;
   }
-  const business = life.finance.business;
-  if (business && !business.closed && !business.bankrupt) {
+  for (const business of life.finance.businesses) {
+    if (business.closed || business.bankrupt) continue;
     business.months += 12;
     const marketShift = randomInt(-40, 30) / 100;
     const annualProfit = (Math.round(business.monthlyRevenue * (1 + marketShift)) - business.monthlyCost) * 12;
     if (annualProfit >= 0) {
       life.money += annualProfit;
       business.lossYears = 0;
+      if (annualProfit) recordTransaction(life, "income", annualProfit, `${business.name} yıllık net kazancı`);
     } else {
       life.money = Math.max(0, life.money + annualProfit);
       business.lossYears += 1;
+      recordTransaction(life, "expense", -annualProfit, `${business.name} yıllık faaliyet zararı`);
       if (business.lossYears >= 2) business.bankrupt = true;
     }
   }
+  const savingsInterest = Math.round(life.bank * life.finance.savingsRate);
+  if (savingsInterest > 0) {
+    life.bank += savingsInterest;
+    recordTransaction(life, "interest", savingsInterest, "Birikim hesabı yıllık faizi");
+  }
   const influenceIncome = life.socialMedia.incomeMonthly * 12;
-  if (influenceIncome > 0) life.money += influenceIncome;
+  if (influenceIncome > 0) {
+    life.money += influenceIncome;
+    recordTransaction(life, "income", influenceIncome, "İçerik üreticisi yıllık geliri");
+  }
   if (life.relationship) life.relationship.years += 1;
 }
 
@@ -700,13 +956,15 @@ function applyEffect(life, effect) {
     education.grade = 1;
   }
   if (effect.exam === "middle") {
-    messages.push(takeExam(life, "middle").message);
+    beginExam(life, "middle");
+    messages.push("Ortaokul değerlendirmesi başladı; soruları yanıtla.");
   } else if (effect.exam === "middle-pass") {
     education.exam = "Ortaokula geçiş değerlendirmesi yapılmadı";
     education.stage = "Ortaokul";
     education.grade = 6;
   } else if (effect.exam === "lgs") {
-    messages.push(takeExam(life, "lgs").message);
+    beginExam(life, "lgs");
+    messages.push("LGS başladı; soruları yanıtla.");
   } else if (effect.exam === "skip-lgs") {
     education.schoolPlacement = "Yerel okul yerleşimi";
     education.stage = "Yerel okul yerleşimi";
@@ -721,7 +979,8 @@ function applyEffect(life, effect) {
     education.exam = effect.yks === "prepared" ? "YKS: hazırlandı" : effect.yks === "balanced" ? "YKS: dengeli hazırlandı" : "YKS: girilmedi";
   }
   if (effect.university === "take") {
-    messages.push(takeExam(life, "yks").message);
+    beginExam(life, "yks");
+    messages.push("YKS başladı; soruları yanıtla.");
   } else if (effect.university === "retry") {
     education.exam = "YKS: tekrar hazırlanıyor";
     education.stage = "YKS hazırlığı";
@@ -750,6 +1009,11 @@ export function advanceYear(life, choiceIndex) {
   }
   const nextAge = life.age + 1;
   life.age = nextAge;
+  life.socialMedia.postsThisAge = 0;
+  if (life.relationship) {
+    life.relationship.actionsThisAge = 0;
+    life.relationship.actionAge = nextAge;
+  }
   for (const member of life.family.members) member.age += 1;
   if (life.education.stage === "İlkokul" && nextAge >= 8 && nextAge <= 10) life.education.grade = nextAge - 6;
   if (life.education.stage === "İlkokul" && nextAge >= 11) {
@@ -763,6 +1027,7 @@ export function advanceYear(life, choiceIndex) {
   }
   if (life.career.job && life.career.salary > 0) {
     life.money += life.career.salary * 12;
+    recordTransaction(life, "income", life.career.salary * 12, `${life.career.job} · 12 aylık maaş`);
     life.career.experience += 1;
     if (life.career.experience % 3 === 0) life.career.salary = Math.round(life.career.salary * 1.08);
   } else if (nextAge >= 16) {
@@ -836,16 +1101,21 @@ export function doActivity(life, activity, options = {}) {
     result.message = `${item.title} etkinliğine katıldın. ${item.cost.toLocaleString("tr-TR")} ₺ harcadın.`;
     result.icon = "✨";
   } else if (activity === "social") {
-    const views = Math.max(10, Math.round(35 + life.socialMedia.followers * 0.08 + life.stats.intelligence * 1.5 + randomInt(0, 180)));
+    if (life.socialMedia.postsThisAge >= 3) {
+      throw new Error("Bu yaşında üç video paylaştın. Yeni içerik hakkın yaş atlayınca yenilenir.");
+    }
+    const views = Math.max(10, Math.round(35 + Math.sqrt(life.socialMedia.followers) * 2.2 + life.stats.intelligence * 1.5 + randomInt(0, 180)));
     const likes = Math.max(1, Math.round(views * (0.012 + life.stats.social / 2500)));
-    const viral = Math.random() < 0.015 + life.stats.social / 2000;
-    const newFollowers = Math.max(0, Math.round(likes * 0.05) + randomInt(0, 4) + (viral ? randomInt(100, 550) : 0));
+    const viral = Math.random() < 0.008 + life.stats.social / 4000;
+    const newFollowers = Math.max(0, Math.round(likes * 0.035) + randomInt(0, 2) + (viral ? randomInt(25, 180) : 0));
     life.socialMedia.posts += 1;
+    life.socialMedia.postsThisAge += 1;
+    life.socialMedia.lastPostAge = life.age;
     life.socialMedia.views += views;
     life.socialMedia.likes += likes;
     life.socialMedia.followers += newFollowers;
     life.socialMedia.incomeMonthly = life.socialMedia.followers >= 5000
-      ? Math.floor(life.socialMedia.followers * (0.02 + life.stats.social / 5000))
+      ? Math.min(50000, Math.floor(life.socialMedia.followers * (0.008 + life.stats.social / 8000)))
       : 0;
     life.stats.social = clamp(life.stats.social + 2);
     life.stats.happiness = clamp(life.stats.happiness + 1);
@@ -853,7 +1123,10 @@ export function doActivity(life, activity, options = {}) {
     result.icon = "📱";
   } else if (activity === "date") {
     if (!life.relationship) {
-      life.relationship = { name: options.name?.trim() || randomItem(familyNamePools.partner), status: "Birlikte", years: 0, closeness: 45 };
+      life.relationship = {
+        name: options.name?.trim() || randomItem(familyNamePools.partner), status: "Birlikte", years: 0, closeness: 45,
+        sharedMoments: 0, gifts: 0, actionsThisAge: 0, actionAge: life.age, lastAction: "Tanışma",
+      };
       result.message = `${life.relationship.name} ile yeni bir ilişkiye başladın.`;
     } else {
       life.relationship.closeness = clamp(life.relationship.closeness + 6);
@@ -881,6 +1154,7 @@ export function doActivity(life, activity, options = {}) {
     life.stats.intelligence = clamp(life.stats.intelligence + 5);
     life.stats.discipline = clamp(life.stats.discipline + 2);
     life.stats.happiness = clamp(life.stats.happiness - 1);
+    life.education.schoolAverage = Math.min(100, Math.round((life.education.schoolAverage + 0.7) * 10) / 10);
     result.message = "Düzenli çalıştın. Bilgin ve disiplinin arttı.";
     result.icon = "📚";
   } else if (activity === "exercise") {
@@ -895,12 +1169,15 @@ export function doActivity(life, activity, options = {}) {
     if (!Number.isFinite(amount) || amount < 1 || amount > life[source]) throw new Error("Geçerli bir tutar gir; kullanılabilir bakiyeni aşma.");
     life[source] -= amount;
     life[target] += amount;
+    if (activity === "deposit") recordTransaction(life, "deposit", amount, "Birikim hesabına aktarım");
+    else recordTransaction(life, "withdraw", amount, "Birikim hesabından çekim");
     result.message = activity === "deposit" ? `${amount.toLocaleString("tr-TR")} ₺ bankaya yatırıldı.` : `${amount.toLocaleString("tr-TR")} ₺ hesabına aktarıldı.`;
     result.icon = "🏦";
   } else if (activity === "spend") {
     const amount = Math.floor(Number(options.amount));
     if (!Number.isFinite(amount) || amount < 1 || amount > life.money) throw new Error("Geçerli bir tutar gir; cüzdanındaki bakiyeyi aşma.");
     life.money -= amount;
+    recordTransaction(life, "expense", amount, "Serbest harcama");
     life.stats.happiness = clamp(life.stats.happiness + Math.min(5, Math.floor(amount / 100)));
     result.message = `${amount.toLocaleString("tr-TR")} ₺ harcadın.`;
     result.icon = "🛍️";

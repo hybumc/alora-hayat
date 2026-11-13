@@ -1,7 +1,8 @@
 import {
-  activityCount, applyForCareer, canDo, careerRequirement, chooseEvent, chooseUniversityProgram,
+  activityCount, applyForCareer, beginExam, canDo, careerRequirement, chooseEvent, chooseUniversityProgram,
   closeBusiness, createLife, doActivity, enterContest, getActivityOptions, isValidLife, leaveCareer,
-  loadLife, manageLoan, migrateLife, performFamilyAction, saveLife, startBusiness, takeExam, tradeStock, advanceYear,
+  loadLife, manageLoan, migrateLife, performFamilyAction, performRelationshipAction, saveLife, startBusiness,
+  submitExam, tradeStock, advanceYear,
 } from "./game.js";
 import { businessSectors, contestTypes, familyGifts, professions, stockMarket, universityPrograms } from "./catalog.js";
 import "./style.css";
@@ -18,6 +19,9 @@ let activityPage = 0;
 let careerQuery = "";
 let careerPageIndex = 0;
 let marketTab = "stocks";
+let soundEnabled = localStorage.getItem("alora-sounds") !== "off";
+let updateState = { status: "idle", message: "Güncelleme denetlenmedi.", version: "" };
+let audioContext = null;
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -31,11 +35,28 @@ const statLabel = {
   discipline: "Disiplin", social: "Sosyallik",
 };
 const navItems = [
-  ["life", "⌂", "Hayatım"], ["activities", "✧", "Etkinlikler"], ["family", "⌂", "Ailem"],
-  ["education", "✎", "Eğitim"], ["career", "↗", "Kariyer"], ["bank", "◈", "Banka"],
-  ["market", "▥", "Ekonomi"], ["relations", "♡", "İlişkiler"], ["social", "◎", "Sosyal"],
-  ["settings", "⚙", "Ayarlar"],
+  ["life", "🏠", "Hayatım"], ["activities", "✨", "Etkinlikler"], ["family", "👨‍👩‍👧", "Ailem"],
+  ["education", "📚", "Eğitim"], ["career", "💼", "Kariyer"], ["bank", "🏦", "Banka"],
+  ["market", "📊", "Ekonomi"], ["relations", "💞", "İlişkiler"], ["social", "📱", "Sosyal"],
+  ["settings", "⚙️", "Ayarlar"],
 ];
+
+function playClick() {
+  if (!soundEnabled || !window.AudioContext) return;
+  audioContext ||= new window.AudioContext();
+  if (audioContext.state === "suspended") audioContext.resume();
+  const oscillator = audioContext.createOscillator();
+  const volume = audioContext.createGain();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(640, audioContext.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.055);
+  volume.gain.setValueAtTime(0.045, audioContext.currentTime);
+  volume.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.06);
+  oscillator.connect(volume);
+  volume.connect(audioContext.destination);
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.06);
+}
 
 function persist() {
   if (!life) return;
@@ -112,6 +133,7 @@ function shell(content) {
         <footer class="footer"><span>Alora Hayat <i>·</i> Her seçim bir iz bırakır.</span><span>Otomatik kayıt açık</span></footer>
       </main>
       ${hasPending ? eventDialog() : ""}
+      ${life.education.pendingExam ? examDialog() : ""}
     </div>`;
 }
 
@@ -126,6 +148,21 @@ function eventDialog() {
       </button>`).join("")}</div>
     ${modalError ? `<p class="modal-error">${esc(modalError)}</p>` : ""}
   </section></div>`;
+}
+
+function examDialog() {
+  const pending = life.education.pendingExam;
+  const label = pending.type === "written" ? `${pending.subject} yazılısı`
+    : pending.type === "mock" ? "Deneme sınavı"
+      : ({ middle: "Ortaokul değerlendirmesi", lgs: "LGS", yks: "YKS", license: "Ehliyet sınavı", "civil-service": "Kamu personeli sınavı" })[pending.type];
+  return `<div class="modal-backdrop exam-backdrop"><form class="event-modal exam-modal" data-form="exam" role="dialog" aria-modal="true" aria-labelledby="exam-title">
+    <div class="modal-spark">✦</div><p class="eyebrow">SINAV KÂĞIDI · ${life.age}. YAŞ</p>
+    <h2 id="exam-title">${esc(label)}</h2><p class="modal-description">Üç soruyu da yanıtla. Doğru cevapların, okul ortalaman ve hazırlığın puanını belirleyecek.</p>
+    <div class="quiz-questions">${pending.questions.map((question, index) => `<fieldset class="quiz-question"><legend><b>${index + 1}.</b> ${esc(question.prompt)}</legend>
+      <div class="quiz-answers">${question.choices.map((choice, answer) => `<label><input type="radio" name="answer-${index}" value="${answer}" required /><span>${esc(choice)}</span></label>`).join("")}</div>
+    </fieldset>`).join("")}</div>
+    <button class="primary-button quiz-submit" type="submit">Cevapları teslim et →</button>
+  </form></div>`;
 }
 
 function lifePage() {
@@ -238,7 +275,7 @@ function familyPage() {
 function marketPage() {
   const tabs = [["stocks", "Borsa"], ["business", "Şirket"], ["contests", "Yarışmalar"]];
   const tabBar = `<div class="market-tabs">${tabs.map(([id, label]) => `<button class="${marketTab === id ? "active" : ""}" data-market-tab="${id}">${label}</button>`).join("")}</div>`;
-  const businessForm = `<form class="panel-card business-form" data-form="business"><div class="panel-title"><span class="panel-icon mint">🏢</span><div><p class="eyebrow">GİRİŞİMİNİ KUR</p><h3>Yeni bir şirket başlat</h3></div></div><label>Şirket adı<input name="name" required minlength="2" maxlength="30" placeholder="Örn. Mahalle Fırını" /></label><label>Sektör<select name="sector">${businessSectors.map((sector) => `<option value="${sector.id}">${esc(sector.name)} · kuruluş ${money(sector.setup)}</option>`).join("")}</select></label><button class="primary-button" type="submit">Şirketi kur →</button></form>`;
+  const businessForm = `<form class="panel-card business-form" data-form="business"><div class="panel-title"><span class="panel-icon mint">🏢</span><div><p class="eyebrow">GİRİŞİMİNİ KUR</p><h3>Yeni bir şirket başlat</h3></div></div><label>Şirket adı<input name="name" required minlength="2" maxlength="30" placeholder="Örn. Mahalle Fırını" /></label><label>Sektör ve satacağın ürün<select name="sector">${businessSectors.map((sector) => `<option value="${sector.id}">${esc(sector.name)} · ${esc(sector.product)} · kuruluş ${money(sector.setup)}</option>`).join("")}</select></label><button class="primary-button" type="submit">Şirketi kur →</button></form>`;
   let content = "";
   if (marketTab === "stocks") {
     content = life.age < 18
@@ -251,14 +288,9 @@ function marketPage() {
         </article>`;
       }).join("")}</div><p class="market-note">Fiyatlar her yaş atlayışında değişir; kazanç garantisi yoktur. Değer düşerse yatırımının bir kısmını veya tamamını kaybedebilirsin.</p>`;
   } else if (marketTab === "business") {
-    const business = life.finance.business;
     content = life.age < 18
       ? `<div class="locked-card"><span>🔒</span><div><b>Şirket kurmak 18 yaşında açılır</b><p>Kuruluş sermayeni ve işletme giderlerini planlayabilirsin.</p></div><small>${18 - life.age} yıl kaldı</small></div>`
-      : business && !business.closed && !business.bankrupt
-        ? `<div class="business-card"><p class="eyebrow">İŞLETMEN</p><h2>${esc(business.name)}</h2><p>${esc(business.sector)} · ${business.months} ay faaliyette</p><div class="career-metrics"><span><small>Aylık gelir</small><b>${money(business.monthlyRevenue)}</b></span><span><small>Aylık gider</small><b>${money(business.monthlyCost)}</b></span><span><small>Aylık net</small><b>${money(business.monthlyRevenue - business.monthlyCost)}</b></span></div><button class="danger-button" data-action="business-close">Şirketi kapat</button></div>`
-        : business?.bankrupt
-          ? `<div class="empty-state"><span>🏚️</span><p>${esc(business.name)} şirketi iki yıl üst üste giderlerini karşılayamadığı için iflas etti. Birikimini toparlayıp yeni bir girişim deneyebilirsin.</p></div>${businessForm}`
-          : businessForm;
+      : `<div class="business-grid">${life.finance.businesses.map((business) => `<article class="business-card ${business.closed || business.bankrupt ? "business-inactive" : ""}"><p class="eyebrow">${business.bankrupt ? "İFLAS ETTİ" : business.closed ? "KAPATILDI" : "FAAL ŞİRKET"}</p><h2>${esc(business.name)}</h2><p>${esc(business.sector)} · Ürün: ${esc(business.product)} · ${business.months} ay faaliyette</p><div class="career-metrics"><span><small>Aylık gelir</small><b>${money(business.monthlyRevenue)}</b></span><span><small>Aylık gider</small><b>${money(business.monthlyCost)}</b></span><span><small>Aylık net</small><b>${money(business.monthlyRevenue - business.monthlyCost)}</b></span></div>${!business.closed && !business.bankrupt ? `<button class="danger-button" data-action="business-close" data-business="${esc(business.id)}">Bu şirketi kapat</button>` : ""}</article>`).join("")}</div><div class="business-explainer"><b>Şirket portföyü</b><span>${life.finance.businesses.filter((business) => !business.closed && !business.bankrupt).length} aktif · ${life.finance.businesses.length} toplam</span><p>Şirketler ayrı ayrı gelir ve gider üretir. Her yıl pazar koşulları değişir; zarar eden bir işletme nakit bakiyeni azaltır ve art arda iki zarar yılında iflas eder.</p></div>${businessForm}`;
   } else {
     content = `<div class="contest-grid">${contestTypes.map((contest) => `<article class="contest-card"><span>🏆</span><p class="eyebrow">${contest.minAge}+ yaş</p><h3>${esc(contest.name)}</h3><p>Katılım ${money(contest.fee)} · Ödül ${money(contest.prize)}</p><button class="primary-button" data-action="contest" data-contest="${contest.id}" ${life.age < contest.minAge || life.money < contest.fee ? "disabled" : ""}>${life.age < contest.minAge ? `${contest.minAge} yaşında açılır` : life.money < contest.fee ? "Bakiye yetersiz" : "Katıl →"}</button></article>`).join("")}</div><div class="note-card"><span>🏅</span><p><b>${life.finance.contestWins} yarışma zaferi</b><br>Bugüne kadar ${life.finance.contestEntries} yarışmaya katıldın. Sonuç, becerilerin ve rakiplerin performansına bağlıdır.</p></div>`;
   }
@@ -286,9 +318,9 @@ function educationPage() {
       ].map(([icon, title, text, age]) => `<article class="education-step ${life.age >= age ? "step-reached" : ""}"><span>${icon}</span><div><b>${title}</b><small>${text}</small></div><i>${life.age >= age ? "✓" : `${age}+`}</i></article>`).join("")}
     </div>
     <section class="section-block"><div class="section-heading"><div><p class="eyebrow">SINAV SONUÇLARI</p><h2>${esc(exam)}</h2></div></div>
-      <div class="score-grid"><div class="balance-panel"><small>LGS puanı</small><b>${life.education.lgsScore === null ? "—" : `${life.education.lgsScore}/500`}</b><p>Okul tercihini etkiler</p></div><div class="balance-panel"><small>YKS puanı</small><b>${life.education.yksScore === null ? "—" : `${life.education.yksScore}/500`}</b><p>Üniversite programlarını açar</p></div></div>
+      <div class="score-grid"><div class="balance-panel"><small>Okul başarı ortalaması</small><b>${life.education.schoolAverage}/100</b><p>${life.education.mockExams.length} deneme · her yazılı ortalamayı günceller</p></div><div class="balance-panel"><small>LGS puanı</small><b>${life.education.lgsScore === null ? "—" : `${life.education.lgsScore}/500`}</b><p>${life.education.schoolPlacement ? esc(life.education.schoolPlacement) : "Sınav sonucuna göre lise tercihi"}</p></div><div class="balance-panel"><small>YKS puanı</small><b>${life.education.yksScore === null ? "—" : `${life.education.yksScore}/500`}</b><p>${life.education.program ? esc(life.education.program) : "Sınav sonucuna göre bölüm tercihi"}</p></div></div>
     </section>
-    ${life.age >= 7 ? `<form class="panel-card exam-card" data-form="written"><div class="panel-title"><span class="panel-icon lavender">✎</span><div><p class="eyebrow">OKUL YAZILISI</p><h3>Bir dersten sınava gir</h3></div></div><p>Hazırlığın ve beceri puanların sonucunu etkiler. Aynı dersten aynı yaşta bir kez sınava girebilirsin.</p><div class="inline-form"><label>Ders<select name="subject"><option>Türkçe</option><option>Matematik</option><option>Fen Bilimleri</option><option>Sosyal Bilgiler</option><option>İngilizce</option></select></label><button class="primary-button" type="submit">Yazılıya gir →</button></div><button class="secondary-button" type="button" data-action="study">📚 Önce ders çalış</button></form>` :
+    ${life.age >= 7 ? `<form class="panel-card exam-card" data-form="written"><div class="panel-title"><span class="panel-icon lavender">📝</span><div><p class="eyebrow">OKUL YAZILISI</p><h3>Bir dersten sınava gir</h3></div></div><p>Üç gerçek soruyu yanıtla. Doğru sayın ve okul ortalaman puanını belirler.</p><div class="inline-form"><label>Ders<select name="subject"><option>Türkçe</option><option>Matematik</option><option>Fen Bilimleri</option><option>Sosyal Bilgiler</option><option>İngilizce</option></select></label><button class="primary-button" type="submit">Sınav kâğıdını al →</button></div><button class="secondary-button" type="button" data-action="study">📖 Ders çalış</button>${life.age >= 10 ? `<button class="secondary-button" type="button" data-action="exam-start" data-exam="mock">Deneme çöz · 3 soru</button>` : ""}${life.age >= 14 ? `<button class="secondary-button" type="button" data-action="exam-start" data-exam="lgs">LGS'ye gir · 3 soru</button>` : ""}${life.age >= 18 ? `<button class="secondary-button" type="button" data-action="exam-start" data-exam="yks">YKS'ye gir · 3 soru</button>` : ""}</form>` :
       `<div class="locked-card"><span>🔒</span><div><b>Okul yazılıları 7 yaşında açılır</b><p>Yaş atladıkça farklı derslerden sınava girebilirsin.</p></div></div>`}
     ${programs}
     <section class="section-block"><div class="section-heading"><div><p class="eyebrow">SINAV GEÇMİŞİ</p><h2>Girdiğin sınavlar</h2></div></div><div class="exam-list">${examRows || `<div class="empty-state"><span>✧</span><p>Henüz sınav sonucu yok. İlk yazılına 7 yaşında girebilirsin.</p></div>`}</div></section>`;
@@ -305,9 +337,11 @@ function careerPage() {
     return `<article class="profession-card"><div><p class="eyebrow">${esc(details)}</p><h3>${esc(profession.name)}</h3><p>${requirement ? esc(requirement) : "Başvuru koşulları uygun"}</p></div><div class="profession-pay"><small>Aylık</small><b>${money(profession.salary)}</b><button class="primary-button" data-action="career-apply" data-profession="${profession.id}" ${requirement ? "disabled title=\"${esc(requirement)}\"" : ""}>${requirement ? "Henüz uygun değil" : "Başvur →"}</button></div></article>`;
   }).join("");
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
-  return `<div class="page-intro"><p class="eyebrow">EMEĞİNLE KURDUĞUN GELECEK</p><h1>Kariyerin</h1><p>Eğitimine ve becerilerine göre 25 farklı işe başvur. Kamu kadrolarında sınav sonucu gerekir.</p></div>
+  const publicExam = life.education.exams.filter((item) => item.type === "civil-service").at(-1);
+  return `<div class="page-intro"><p class="eyebrow">EMEĞİNLE KURDUĞUN GELECEK</p><h1>Kariyerin</h1><p>Eğitimine, sınav puanına ve becerilerine göre ${professions.length} meslek arasından seçim yap. İlanın maaşı ve koşulları başvurudan önce görünür.</p></div>
     <div class="career-hero"><div><p class="eyebrow">ŞU ANKİ İŞİN</p><h2>${esc(life.career.job || "Henüz bir işin yok")}</h2><p>${life.career.job ? `${life.career.experience} yıl deneyim` : canDo(life, "job") ? "Koşullarını karşıladığın işlere başvurabilirsin." : "İlk iş başvuruları 16 yaşında açılır."}</p></div><div class="salary-box"><small>Aylık maaş</small><b>${money(life.career.salary)}</b></div></div>
-    <div class="panel-card progression-card"><div class="panel-title"><span class="panel-icon peach">↗</span><div><p class="eyebrow">KARİYER YOLCULUĞU</p><h3>${life.career.experience} yıl deneyim</h3></div></div><p>Maaşlar aylık gösterilir ve yaş atlayınca 12 aylık gelir hesabına eklenir. Her üç çalışma yılında zam alırsın.</p><div class="career-metrics"><span><small>Bir sonraki zam</small><b>${life.career.job ? `${3 - life.career.experience % 3} yıl` : "İşe başlayınca"}</b></span><span><small>Ehliyet</small><b>${esc(life.career.license.status)}${life.career.license.score === null ? "" : ` · ${life.career.license.score}/100`}</b></span><button class="secondary-button" data-action="license" ${life.age < 18 || life.career.license.status === "Aldı" ? "disabled" : ""}>${life.age < 18 ? "Ehliyet 18 yaşında açılır" : life.career.license.status === "Aldı" ? "Ehliyet alındı" : "Ehliyet sınavına gir · 1.800 ₺"}</button>${life.career.job ? `<button class="danger-button" data-action="leave-job">İşten ayrıl</button>` : ""}</div></div>
+    <div class="panel-card progression-card"><div class="panel-title"><span class="panel-icon peach">↗</span><div><p class="eyebrow">KARİYER YOLCULUĞU</p><h3>${life.career.experience} yıl deneyim</h3></div></div><p>Maaşlar aylık gösterilir ve yaş atlayınca 12 aylık gelir hesabına eklenir. Her üç çalışma yılında zam alırsın.</p>    <div class="career-metrics"><span><small>Bir sonraki zam</small><b>${life.career.job ? `${3 - life.career.experience % 3} yıl` : "İşe başlayınca"}</b></span><span><small>Ehliyet</small><b>${esc(life.career.license.status)}${life.career.license.score === null ? "" : ` · ${life.career.license.score}/100`}</b></span><button class="secondary-button" data-action="license" ${life.age < 18 || life.career.license.status === "Aldı" ? "disabled" : ""}>${life.age < 18 ? "Ehliyet 18 yaşında açılır" : life.career.license.status === "Aldı" ? "Ehliyet alındı" : "Ehliyet sınavına gir · 1.800 ₺"}</button>${life.career.job ? `<button class="danger-button" data-action="leave-job">İşten ayrıl</button>` : ""}</div></div>
+    <div class="panel-card exam-card public-exam-card"><div class="panel-title"><span class="panel-icon lavender">🏛️</span><div><p class="eyebrow">KAMU KADROLARI</p><h3>${publicExam ? `${publicExam.score}/100 puan · ${publicExam.passed ? "Başarılı" : "Tekrar hazırlan"}` : "Önce sınava gir"}</h3></div></div><p>Belediye, zabıta, polis ve itfaiye kadroları için üç soruluk kamu personeli sınavını çöz. Sınav ücreti 250 ₺, başarı eşiği 65 puan; her ilanda eğitim ve beceri koşulları ayrıca gösterilir.</p><button class="primary-button" data-action="exam-start" data-exam="civil-service" ${life.age < 18 ? "disabled" : ""}>${life.age < 18 ? "18 yaşında açılır" : "Kamu sınavına gir →"}</button></div>
     <section class="section-block"><div class="section-heading"><div><p class="eyebrow">MESLEKLER</p><h2>İş ilanları</h2></div><span class="soft-label">${filtered.length} meslek</span></div>
       <form class="search-form" data-form="career-search"><input name="query" value="${esc(careerQuery)}" placeholder="Meslek ara" aria-label="Meslek ara" /><button class="secondary-button" type="submit">Ara</button></form>
       <div class="profession-list">${entries || `<div class="empty-state"><p>Bu aramayla eşleşen meslek bulunamadı.</p></div>`}</div>
@@ -325,23 +359,28 @@ function bankPage() {
     : `<section class="panel-card loan-card"><div class="panel-title"><span class="panel-icon lavender">🏦</span><div><p class="eyebrow">KREDİ HESABI</p><h3>${loan ? `Kalan borç ${money(loan.balance)}` : "Kredin yok"}</h3></div></div><p>${loan ? `Yıllık faiz %${Math.round(loan.interestRate * 100)} · ${loan.years} yıl geçti.` : "Ödeyebileceğin bir taksit planı belirle. Borca her yaş atlayışında faiz eklenir."}</p><div class="inline-form"><form data-form="loan-borrow"><label>Kredi tutarı<input name="amount" type="number" min="1" required placeholder="Örn. 10.000" /></label><button class="primary-button" type="submit">Kredi çek</button></form>${loan ? `<form data-form="loan-repay"><label>Ödeme tutarı<input name="amount" type="number" min="1" max="${life.money}" required placeholder="Örn. 2.000" /></label><button class="secondary-button" type="submit">Borç öde</button></form>` : ""}</div></section>`;
   return `<div class="page-intro"><p class="eyebrow">KÜÇÜK BİRİKİMLER, BÜYÜK HAYALLER</p><h1>Bankan</h1><p>Gelirini, birikimini ve harcamalarını yönet.</p></div>
     <div class="bank-total"><div><span class="panel-icon peach">◈</span><p class="eyebrow">TOPLAM BAKİYEN</p><h2>${money(life.money + life.bank)}</h2></div><span class="bank-art">🏦</span></div>
-    <div class="balance-grid"><div class="balance-panel"><small>◉ &nbsp; Cüzdan</small><b>${money(life.money)}</b><p>Harcamaya hazır bakiye</p></div><div class="balance-panel"><small>◈ &nbsp; Birikim hesabı</small><b>${money(life.bank)}</b><p>Bankada tuttuğun birikim</p></div></div>
+    <div class="balance-grid"><div class="balance-panel"><small>🪙 &nbsp; Cüzdan</small><b>${money(life.money)}</b><p>Harcamaya hazır bakiye</p></div><div class="balance-panel"><small>💎 &nbsp; Birikim hesabı</small><b>${money(life.bank)}</b><p>Yıllık faiz: %${(life.finance.savingsRate * 100).toLocaleString("tr-TR")} · yaş atlayınca işler</p></div></div>
     <div class="transfer-grid">
       <form class="panel-card transfer-form" data-form="deposit"><div class="panel-title"><span class="panel-icon peach">↓</span><div><p class="eyebrow">BİRİKİM YAP</p><h3>Bankaya yatır</h3></div></div><label>Tutar<input name="amount" type="number" min="1" max="${life.money}" required placeholder="Örn. 100" /></label><button class="primary-button" type="submit">Para yatır →</button></form>
       <form class="panel-card transfer-form" data-form="withdraw"><div class="panel-title"><span class="panel-icon lavender">↑</span><div><p class="eyebrow">PARANI KULLAN</p><h3>Cüzdana aktar</h3></div></div><label>Tutar<input name="amount" type="number" min="1" max="${life.bank}" required placeholder="Örn. 50" /></label><button class="secondary-button" type="submit">Para çek →</button></form>
       <form class="panel-card transfer-form" data-form="spend"><div class="panel-title"><span class="panel-icon mint">✧</span><div><p class="eyebrow">KENDİNE BİR ŞEY AL</p><h3>Harcama yap</h3></div></div><label>Tutar<input name="amount" type="number" min="1" max="${life.money}" required placeholder="Örn. 75" /></label><button class="secondary-button" type="submit">Harca →</button></form>
-    </div>${loanPanel}${casino}`;
+    </div><section class="section-block"><div class="section-heading"><div><p class="eyebrow">HESAP HAREKETLERİ</p><h2>Son işlemler</h2></div><span class="soft-label">Son 30 işlem saklanır</span></div><div class="transaction-list">${life.finance.transactions.slice(0, 6).map((transaction) => {
+      const inflow = ["income", "interest", "credit"].includes(transaction.type);
+      const label = transaction.type === "deposit" ? "Birikim" : transaction.type === "withdraw" ? "Para çekme" : transaction.type === "credit" ? "Kredi" : inflow ? "Gelir" : "Gider";
+      return `<article class="transaction-row"><span class="transaction-icon">${transaction.type === "deposit" ? "↓" : inflow ? "↗" : "↘"}</span><div><b>${esc(transaction.description)}</b><small>${transaction.age}. yaş · ${label}</small></div><strong class="${inflow ? "transaction-positive" : transaction.type === "expense" ? "transaction-negative" : ""}">${inflow ? "+" : transaction.type === "expense" ? "−" : ""}${money(transaction.amount)}</strong></article>`;
+    }).join("") || `<div class="empty-state"><p>Henüz hesap hareketin yok. İlk para yatırma işlemin burada görünür.</p></div>`}</div></section>${loanPanel}${casino}`;
 }
 
 function relationsPage() {
   const eligible = canDo(life, "date");
+  const relationship = life.relationship;
   return `<div class="page-intro"><p class="eyebrow">BAĞ KUR, PAYLAŞ, BÜYÜ</p><h1>İlişkilerin</h1><p>Arkadaşlık ve romantik ilişkiler zamanla şekillenir. Her bağa özen göstermek gerekir.</p></div>
     <div class="relationship-card ${life.relationship ? "has-relationship" : ""}">
-      <span class="relationship-art">${life.relationship ? "💞" : "🫶"}</span>
+      <span class="relationship-art">${life.relationship ? "💗" : "🤝"}</span>
       <p class="eyebrow">${life.relationship ? "HAYATINDAKİ KİŞİ" : "YENİ BAĞLAR KUR"}</p>
-      <h2>${life.relationship ? esc(life.relationship.name) : "Hikâyen sana ait"}</h2>
-      <p>${life.relationship ? `${life.relationship.years} yıldır birliktesiniz. Yakınlık: ${life.relationship.closeness}/100` : eligible ? "Hayatında henüz romantik bir ilişki yok. Hazır olduğunda yeni biriyle tanışabilirsin." : "Romantik ilişki etkinlikleri 16 yaşında açılır."}</p>
-      ${life.relationship ? `<div class="relationship-meter"><span style="width:${life.relationship.closeness}%"></span></div><div class="relation-buttons"><button class="primary-button" data-action="date">Birlikte vakit geçir →</button><button class="secondary-button" data-action="breakup">Yolları ayır</button></div>` :
+      <h2>${relationship ? esc(relationship.name) : "Hikâyen sana ait"}</h2>
+      <p>${relationship ? `${relationship.years} yıldır birliktesiniz. Yakınlık: ${relationship.closeness}/100 · ${relationship.sharedMoments} paylaşılan an · ${relationship.gifts} kutlama` : eligible ? "Hayatında henüz romantik bir ilişki yok. Hazır olduğunda yeni biriyle tanışabilirsin." : "Romantik ilişki etkinlikleri 16 yaşında açılır."}</p>
+      ${relationship ? `<div class="relationship-meter"><span style="width:${relationship.closeness}%"></span></div><div class="relation-buttons"><button class="primary-button" data-action="relationship-action" data-kind="conversation">💬 Sohbet et</button><button class="secondary-button" data-action="relationship-action" data-kind="date">🍽️ Akşam yemeği · 450 ₺</button><button class="secondary-button" data-action="relationship-action" data-kind="apology">💐 Gönlünü al · 80 ₺</button><button class="secondary-button" data-action="relationship-action" data-kind="celebration">🎁 Özel günü kutla · 900 ₺</button><button class="secondary-button" data-action="relationship-action" data-kind="trip">🧳 Hafta sonu gezisi · 2.400 ₺</button>${life.age >= 18 ? `<button class="secondary-button" data-action="relationship-action" data-kind="family">🏡 Ailelerle tanış · 350 ₺</button>` : ""}<button class="danger-button" data-action="breakup">Yolları ayır</button></div><div class="relationship-year-note">Bu yaşta ${Math.max(0, 4 - (relationship.actionAge === life.age ? relationship.actionsThisAge : 0))} ortak etkinlik hakkın kaldı. Vakit geçirmek yaşını ilerletmez.</div>` :
         `<form class="relation-form" data-form="date"><label>Tanışacağın kişinin adı<input name="name" maxlength="24" placeholder="İstersen boş bırak" /></label><button class="primary-button" type="submit" ${!eligible ? "disabled" : ""}>${eligible ? "Biriyle tanış →" : "16 yaşında açılır"}</button></form>`}
     </div>
     <div class="note-card"><span>♡</span><p><b>İlişkiler karşılıklı emek ister.</b><br>Birlikte vakit geçirmek yakınlığı artırır; seçimlerin mutluluğunu da etkiler.</p></div>`;
@@ -356,7 +395,7 @@ function socialPage() {
   ];
   return `<div class="page-intro"><p class="eyebrow">ALORA AKIŞI</p><h1>Sosyal dünyan</h1><p>Yaşadığın güzel anları paylaş; takipçi, görüntülenme ve beğeni kazan. Gelir için istikrarlı büyümen gerekir.</p></div>
     <div class="social-metrics"><div class="balance-panel"><small>Takipçi</small><b>${life.socialMedia.followers.toLocaleString("tr-TR")}</b><p>${life.socialMedia.posts} paylaşım</p></div><div class="balance-panel"><small>Toplam görüntülenme</small><b>${life.socialMedia.views.toLocaleString("tr-TR")}</b><p>${life.socialMedia.likes.toLocaleString("tr-TR")} beğeni</p></div><div class="balance-panel"><small>Aylık içerik geliri</small><b>${money(life.socialMedia.incomeMonthly)}</b><p>${life.socialMedia.followers >= 5000 ? "Yaş atlayınca yıllık gelirine eklenir" : "Gelir 5.000 takipçide açılır"}</p></div></div>
-    ${eligible ? `<div class="post-card"><p class="eyebrow">BUGÜN NE PAYLAŞMAK İSTERSİN?</p><div class="post-choices">${postTypes.map(([icon, title, text]) => `<button data-post="${esc(text)}"><span>${icon}</span><b>${title}</b><small>Akışında paylaş →</small></button>`).join("")}</div></div>` :
+    ${eligible ? `<div class="post-card"><p class="eyebrow">YILLIK VİDEO PLANI · ${life.socialMedia.postsThisAge}/3 PAYLAŞIM</p><div class="post-choices">${postTypes.map(([icon, title, text]) => `<button data-post="${esc(text)}" ${life.socialMedia.postsThisAge >= 3 ? "disabled" : ""}><span>${icon}</span><b>${title}</b><small>${life.socialMedia.postsThisAge >= 3 ? "Yeni içerik için yaş atla" : "Video paylaş →"}</small></button>`).join("")}</div><p class="social-limit-note">Her yaşta en fazla üç içerik paylaşabilirsin. Takipçi ve görüntülenme zamanla büyür; gelir yalnızca gerçekçi ölçekte, yaş atlayınca ödenir.</p></div>` :
       `<div class="locked-card"><span>🔒</span><div><b>Sosyal medya 13 yaşında açılır</b><p>O zamana kadar hayatının güzel anlarını yaşamaya devam et.</p></div><small>${13 - life.age} yıl kaldı</small></div>`}
     <section class="section-block"><div class="section-heading"><div><p class="eyebrow">YALNIZCA SENİN AKIŞIN</p><h2>Paylaşımların ve anıların</h2></div></div><div class="feed-list social-feed">${life.feed.filter((item) => item.icon === "📱").length ? life.feed.filter((item) => item.icon === "📱").map(feedItem).join("") : `<div class="empty-state"><span>✧</span><p>Henüz paylaşımın yok. Güzel bir anın olduğunda burada saklanır.</p></div>`}</div></section>`;
 }
@@ -364,6 +403,8 @@ function socialPage() {
 function settingsPage() {
   return `<div class="page-intro"><p class="eyebrow">SENİN OYUNUN, SENİN KONTROLÜN</p><h1>Ayarlar</h1><p>Kayıt dosyanı yönet ve uygulamayı istediğin gibi kullan.</p></div>
     <div class="settings-grid">
+      <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon lavender">🔊</span><div><p class="eyebrow">OYUN SESLERİ</p><h3>Tıklama sesi</h3></div></div><p>Arayüz düğmelerine dokunduğunda kısa, yumuşak bir ses çal.</p><button class="secondary-button" data-action="toggle-sound">${soundEnabled ? "Sesleri kapat" : "Sesleri aç"}</button></section>
+      <section class="panel-card setting-card update-card"><div class="panel-title"><span class="panel-icon mint">⬆️</span><div><p class="eyebrow">SÜRÜM ${esc(__APP_VERSION__)}</p><h3>Uygulama güncellemeleri</h3></div></div><p>${esc(updateState.message)}</p>${updateState.status === "available" ? `<button class="primary-button" data-action="update-download">Sürüm ${esc(updateState.version)} · indir ve kur →</button>` : updateState.status === "downloaded" ? `<button class="primary-button" data-action="update-install">Yeniden başlat ve güncelle →</button>` : `<button class="secondary-button" data-action="update-check" ${updateState.status === "checking" || updateState.status === "downloading" ? "disabled" : ""}>${updateState.status === "checking" ? "Güncelleme aranıyor…" : "Güncellemeleri denetle"}</button>`}<small>Güncellemeler isteğe bağlıdır. Yeni sürümü yüklemek mevcut kayıtlarını silmez.</small></section>
       <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon mint">✓</span><div><p class="eyebrow">OTOMATİK KAYIT</p><h3>İlerlemen güvende</h3></div></div><p>Her seçimin ve yaptığın etkinlik bu cihazda otomatik kaydedilir. Oyunu yeniden açtığında kaldığın yerden devam edersin.</p><button class="secondary-button" data-action="export">Kayıt dosyasını dışa aktar ↓</button><button class="secondary-button" data-action="import">Kayıt dosyasını içe aktar ↑</button><input id="import-file" type="file" accept="application/json,.json" hidden /></section>
       <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon peach">⚙</span><div><p class="eyebrow">OYUNU YÖNET</p><h3>Yeni bir başlangıç</h3></div></div><p>Mevcut hayatını sıfırlayabilir veya uygulamayı Windows ayarlarından kaldırabilirsin.</p><button class="danger-button" data-action="reset">Hayatımı sıfırla</button><div class="uninstall-note"><b>Uygulamayı kaldırmak için</b><p>Windows <b>Ayarlar → Uygulamalar → Yüklü uygulamalar</b> bölümünde “Alora Hayat”ı bulup Kaldır'ı seç. İlerleme kayıtları kaldırma işleminden sonra cihazda kalır; önce dışa aktarabilir veya oyundan sıfırlayabilirsin.</p></div></section>
     </div>
@@ -395,6 +436,17 @@ function doAge() {
   try {
     advanceYear(life);
     notice = "";
+    persist();
+  } catch (error) {
+    notice = error.message;
+  }
+  render();
+}
+
+function launchExam(type, subject = "") {
+  try {
+    beginExam(life, type, subject);
+    notice = `${type === "written" ? `${subject} yazılısı` : "Sınav"} başladı. Başarılar!`;
     persist();
   } catch (error) {
     notice = error.message;
@@ -493,7 +545,9 @@ app.addEventListener("submit", (event) => {
     const trade = event.submitter?.value;
     commit(() => tradeStock(life, data.get("symbol"), trade, data.get("shares")));
   } else if (action === "written") {
-    commit(() => takeExam(life, "written", String(data.get("subject") || "")).message);
+    launchExam("written", String(data.get("subject") || ""));
+  } else if (action === "exam") {
+    commit(() => submitExam(life, [0, 1, 2].map((index) => data.get(`answer-${index}`))).message);
   } else if (action === "activity-search") {
     activityQuery = String(data.get("query") || "").trim();
     activityPage = 0;
@@ -508,6 +562,7 @@ app.addEventListener("submit", (event) => {
 app.addEventListener("click", (event) => {
   const target = event.target.closest("button, a");
   if (!target) return;
+  if (!target.disabled) playClick();
   if (target.dataset.nav) {
     tab = target.dataset.nav;
     notice = "";
@@ -550,7 +605,13 @@ app.addEventListener("click", (event) => {
       commit(() => leaveCareer(life));
       break;
     case "license":
-      commit(() => takeExam(life, "license").message);
+      launchExam("license");
+      break;
+    case "exam-start":
+      launchExam(target.dataset.exam);
+      break;
+    case "relationship-action":
+      commit(() => performRelationshipAction(life, target.dataset.kind));
       break;
     case "university":
       commit(() => chooseUniversityProgram(life, target.dataset.program));
@@ -573,13 +634,44 @@ app.addEventListener("click", (event) => {
       commit(() => enterContest(life, target.dataset.contest).message);
       break;
     case "business-close":
-      commit(() => closeBusiness(life));
+      commit(() => closeBusiness(life, target.dataset.business));
       break;
     case "breakup":
       if (window.confirm(`${life.relationship?.name || "Bu kişi"} ile yollarınızı ayırmak istiyor musun?`)) perform("breakup");
       break;
     case "clear-notice": notice = ""; render(); break;
     case "export": downloadSave(); break;
+    case "toggle-sound":
+      soundEnabled = !soundEnabled;
+      localStorage.setItem("alora-sounds", soundEnabled ? "on" : "off");
+      render();
+      break;
+    case "update-check":
+      updateState = { ...updateState, status: "checking", message: "Yeni sürüm kontrol ediliyor…" };
+      render();
+      window.aloraUpdater?.checkForUpdates().catch((error) => {
+        updateState = { status: "error", message: `Güncelleme kontrol edilemedi: ${error.message}` };
+        render();
+      });
+      if (!window.aloraUpdater) {
+        updateState = { status: "unavailable", message: "Güncelleme kontrolü yalnızca kurulu Windows uygulamasında kullanılabilir." };
+        render();
+      }
+      break;
+    case "update-download":
+      updateState = { ...updateState, status: "downloading", message: "Güncelleme indiriliyor…" };
+      render();
+      window.aloraUpdater?.downloadAndInstall().catch((error) => {
+        updateState = { status: "error", message: `Güncelleme indirilemedi: ${error.message}` };
+        render();
+      });
+      break;
+    case "update-install":
+      window.aloraUpdater?.installUpdate().catch((error) => {
+        updateState = { status: "error", message: `Güncelleme kurulamadı: ${error.message}` };
+        render();
+      });
+      break;
     case "import": importInput = app.querySelector("#import-file"); importInput?.click(); break;
     case "reset":
       if (window.confirm("Mevcut hayatın ve cihazdaki kayıt silinecek. Emin misin?")) {
@@ -609,3 +701,17 @@ try {
   notice = "Kayıt dosyası okunamadı. Yeni bir hayat başlatabilirsin.";
 }
 render();
+
+if (window.aloraUpdater) {
+  window.aloraUpdater.onStatus((status) => {
+    updateState = status;
+    if (life && tab === "settings") render();
+    else if (status.status === "available") {
+      notice = `Alora Hayat ${status.version} güncellemesi hazır. İstersen Ayarlar'dan indirip kurabilirsin.`;
+      render();
+    }
+  });
+  window.aloraUpdater.checkForUpdates().catch((error) => {
+    updateState = { status: "error", message: `Güncelleme kontrol edilemedi: ${error.message}` };
+  });
+}

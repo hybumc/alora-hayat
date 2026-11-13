@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  activityCount, advanceYear, applyForCareer, canDo, chooseEvent, chooseUniversityProgram,
+  activityCount, advanceYear, applyForCareer, beginExam, canDo, chooseEvent, chooseUniversityProgram,
   createLife, doActivity, enterContest, getActivityOptions, getAgeEvent, isValidLife, loadLife,
-  manageLoan, migrateLife, performFamilyAction, saveLife, startBusiness, takeExam, tradeStock, SAVE_KEY,
+  manageLoan, migrateLife, performFamilyAction, performRelationshipAction, saveLife, startBusiness, submitExam,
+  takeExam, tradeStock, SAVE_KEY,
 } from "./game.js";
 import { universityPrograms } from "./catalog.js";
 
@@ -105,6 +106,15 @@ test("banka bakiyeleri arasında tutar aktarılır ve kayıt geri yüklenir", ()
   assert.equal(isValidLife({ version: 1, name: "Eksik kayıt", age: 2 }), false);
 });
 
+test("birikim hesabı yaş atlayınca faiz kazanır ve hareketlere yansır", () => {
+  const life = fresh();
+  life.bank = 10000;
+  advanceYear(life);
+  assert.equal(life.bank, 10350);
+  assert.equal(life.finance.transactions[0].type, "interest");
+  assert.equal(life.finance.transactions[0].amount, 350);
+});
+
 test("yaş olayı yanıtlanmadan ikinci kez yaş atlanamaz", () => {
   const life = fresh();
   advanceYear(life);
@@ -148,6 +158,7 @@ test("aileyle etkinlik, hediye ve para gönderme yakınlığı artırır; yaş d
 test("ilişki isimleri havuzdan seçilir, birlikte vakit yaş veya ilişki süresi eklemez", () => {
   const life = fresh();
   life.age = 16;
+  life.money = 10000;
   const before = life.age;
   doActivity(life, "date");
   assert.equal(life.age, before);
@@ -181,9 +192,27 @@ test("sınavlar puan ve sonuç kaydeder; üniversite ve aylık meslek şartları
   life.education.stage = "Üniversite mezunu";
   life.stats.intelligence = 100;
   life.stats.discipline = 100;
+  assert.throws(() => applyForCareer(life, "municipal-clerk"), /Önce Kariyer bölümünden/);
+  life.age = 26;
+  beginExam(life, "civil-service");
+  const publicExam = submitExam(life, [0, 0, 1]);
+  assert.equal(publicExam.passed, true);
   applyForCareer(life, "municipal-clerk");
   assert.equal(life.career.job, "Belediye memuru");
   assert.equal(life.career.salary, 36500);
+});
+
+test("sınav soruları yanıtlanmadan sonuçlanmaz ve yazılı puanı okul ortalamasını günceller", () => {
+  const life = fresh();
+  life.age = 12;
+  const before = life.education.schoolAverage;
+  beginExam(life, "written", "Matematik");
+  assert.throws(() => submitExam(life, [0]), /üç sorunun da cevabını seç/);
+  const result = submitExam(life, [0, 1, 2]);
+  assert.equal(result.correct, 3);
+  assert.ok(result.score > 70);
+  assert.ok(life.education.schoolAverage > before);
+  assert.equal(life.education.pendingExam, null);
 });
 
 test("sosyal medya metrikleri büyür ve aylık içerik geliri yaş atlayınca ödenir", () => {
@@ -201,6 +230,16 @@ test("sosyal medya metrikleri büyür ve aylık içerik geliri yaş atlayınca �
   const before = life.money;
   advanceYear(life);
   assert.equal(life.money, before + 1450);
+});
+
+test("sosyal video paylaşımı yaş başına sınırlıdır ve gelir üst sınırı vardır", () => {
+  const life = fresh();
+  life.age = 18;
+  life.socialMedia.followers = 10000000;
+  for (let post = 0; post < 3; post += 1) doActivity(life, "social", { text: "Yeni video" });
+  assert.throws(() => doActivity(life, "social", { text: "Dördüncü video" }), /üç video/);
+  assert.ok(life.socialMedia.incomeMonthly <= 50000);
+  assert.equal(life.socialMedia.postsThisAge, 3);
 });
 
 test("kredi, hisse alım-satımı ve yarışma katılımı bakiyeyi tutarlı yönetir", () => {
@@ -243,6 +282,32 @@ test("işletme iki yıl üst üste zarar ederse iflas eder", () => {
   assert.equal(life.finance.business.name, "Yeni Dükkân");
 });
 
+test("birden fazla şirket farklı ürünlerle aynı anda işletilebilir", () => {
+  const life = fresh();
+  life.age = 25;
+  life.money = 200000;
+  startBusiness(life, "cafe", "Kıyı Kahvesi");
+  startBusiness(life, "bakery", "Sabah Fırını");
+  assert.equal(life.finance.businesses.length, 2);
+  assert.equal(life.finance.businesses[0].product, "Kahve, tatlı ve atıştırmalık");
+  assert.equal(life.finance.businesses[1].product, "Günlük ekmek ve hamur işi");
+});
+
+test("ilişki etkinlikleri çeşitli ve yaş başına sınırlıdır", () => {
+  const life = fresh();
+  life.age = 16;
+  life.money = 10000;
+  doActivity(life, "date", { name: "Ece" });
+  const age = life.age;
+  performRelationshipAction(life, "conversation");
+  performRelationshipAction(life, "date");
+  performRelationshipAction(life, "apology");
+  performRelationshipAction(life, "celebration");
+  assert.throws(() => performRelationshipAction(life, "trip"), /dört etkinlik/);
+  assert.equal(life.relationship.sharedMoments, 4);
+  assert.equal(life.age, age);
+});
+
 test("eski sürüm kaydı yeni aile ve ekonomi alanlarına taşınır", () => {
   const legacy = fresh();
   legacy.version = 1;
@@ -260,8 +325,33 @@ test("eski sürüm kaydı yeni aile ve ekonomi alanlarına taşınır", () => {
   delete legacy.career.professionId;
   delete legacy.career.license;
   const migrated = migrateLife(legacy);
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
+  assert.ok(Array.isArray(migrated.finance.businesses));
   assert.equal(migrated.career.salary, 12000);
   assert.equal(migrated.feed.at(-1).text, "100 ₺ kaybettin.");
+  assert.ok(isValidLife(migrated));
+});
+
+test("0.1.0 kayıtları çoklu şirket, ilişki ve sınav alanlarına kayıpsız yükseltilir", () => {
+  const legacy = fresh();
+  legacy.version = 2;
+  legacy.education.schoolAverage = undefined;
+  legacy.education.mockExams = undefined;
+  legacy.education.pendingExam = undefined;
+  legacy.socialMedia.postsThisAge = undefined;
+  legacy.socialMedia.lastPostAge = undefined;
+  legacy.relationship = { name: "Ece", status: "Birlikte", years: 2, closeness: 70 };
+  legacy.finance.business = {
+    name: "Eski Kafe", sector: "Mahalle kafesi", monthlyRevenue: 12000, monthlyCost: 7000,
+    months: 12, lossYears: 0, closed: false, bankrupt: false,
+  };
+  legacy.finance.businesses = undefined;
+  legacy.finance.transactions = undefined;
+  legacy.finance.savingsRate = undefined;
+  const migrated = migrateLife(legacy);
+  assert.equal(migrated.version, 3);
+  assert.equal(migrated.finance.businesses.length, 1);
+  assert.equal(migrated.finance.businesses[0].product, "Mahalle kafesi");
+  assert.equal(migrated.relationship.sharedMoments, 0);
   assert.ok(isValidLife(migrated));
 });

@@ -95,6 +95,20 @@ export const professions = [
   { id: "psychologist", name: "Psikolog", minAge: 23, education: 2, salary: 72000, intelligence: 75, discipline: 65, social: 65 },
   { id: "veterinarian", name: "Veteriner hekim", minAge: 24, education: 2, salary: 81000, intelligence: 78, discipline: 70 },
   { id: "researcher", name: "Araştırma görevlisi", minAge: 23, education: 2, salary: 62000, intelligence: 82, discipline: 75 },
+  { id: "paramedic", name: "Paramedik", minAge: 22, education: 2, salary: 58500, intelligence: 65, discipline: 68, health: 65 },
+  { id: "dentist", name: "Diş hekimi", minAge: 25, education: 2, salary: 112000, intelligence: 86, discipline: 78 },
+  { id: "pharmacist", name: "Eczacı", minAge: 24, education: 2, salary: 89000, intelligence: 80, discipline: 72 },
+  { id: "designer", name: "İç mimar", minAge: 22, education: 2, salary: 69500, intelligence: 68, discipline: 60 },
+  { id: "chef", name: "Restoran şefi", minAge: 23, education: 1, salary: 61000, intelligence: 48, discipline: 70 },
+  { id: "account-manager", name: "Satış yöneticisi", minAge: 24, education: 1, salary: 64000, intelligence: 55, discipline: 60, social: 70 },
+  { id: "mechanic", name: "Otomotiv teknisyeni", minAge: 19, education: 1, salary: 46500, intelligence: 38, discipline: 55, license: true },
+  { id: "electrician-master", name: "Elektrik ustası", minAge: 21, education: 1, salary: 57000, intelligence: 48, discipline: 65 },
+  { id: "firefighter", name: "İtfaiye eri", minAge: 21, education: 1, salary: 49200, intelligence: 40, discipline: 68, health: 78, exam: true },
+  { id: "civil-engineer", name: "İnşaat mühendisi", minAge: 22, education: 2, salary: 81000, intelligence: 72, discipline: 70 },
+  { id: "data-analyst", name: "Veri analisti", minAge: 22, education: 2, salary: 79500, intelligence: 78, discipline: 65 },
+  { id: "content-producer", name: "İçerik yapımcısı", minAge: 18, education: 0, salary: 35000, intelligence: 45, discipline: 45, social: 55 },
+  { id: "accountant-assistant", name: "Muhasebe uzman yardımcısı", minAge: 19, education: 1, salary: 39000, intelligence: 48, discipline: 58 },
+  { id: "nurse-manager", name: "Sağlık yöneticisi", minAge: 25, education: 2, salary: 76000, intelligence: 72, discipline: 70, social: 60 },
 ];
 
 export const contestTypes = [
@@ -116,11 +130,16 @@ export const stockMarket = [
 ];
 
 export const businessSectors = [
-  { id: "cafe", name: "Mahalle kafesi", setup: 18000, monthlyCost: 6500, monthlyRevenue: 9200 },
-  { id: "shop", name: "Küçük tasarım dükkânı", setup: 26000, monthlyCost: 8200, monthlyRevenue: 11500 },
-  { id: "delivery", name: "Yerel teslimat şirketi", setup: 35000, monthlyCost: 14500, monthlyRevenue: 19500 },
-  { id: "studio", name: "Dijital tasarım stüdyosu", setup: 42000, monthlyCost: 9500, monthlyRevenue: 15800 },
-  { id: "software", name: "Yazılım girişimi", setup: 65000, monthlyCost: 18000, monthlyRevenue: 29500 },
+  { id: "cafe", name: "Mahalle kafesi", product: "Kahve, tatlı ve atıştırmalık", setup: 18000, monthlyCost: 6500, monthlyRevenue: 9200 },
+  { id: "shop", name: "Küçük tasarım dükkânı", product: "El yapımı ürünler", setup: 26000, monthlyCost: 8200, monthlyRevenue: 11500 },
+  { id: "delivery", name: "Yerel teslimat şirketi", product: "Mahalle siparişleri", setup: 35000, monthlyCost: 14500, monthlyRevenue: 19500 },
+  { id: "studio", name: "Dijital tasarım stüdyosu", product: "Marka ve arayüz tasarımı", setup: 42000, monthlyCost: 9500, monthlyRevenue: 15800 },
+  { id: "software", name: "Yazılım girişimi", product: "Abonelik yazılımı", setup: 65000, monthlyCost: 18000, monthlyRevenue: 29500 },
+  { id: "bakery", name: "Semt fırını", product: "Günlük ekmek ve hamur işi", setup: 32000, monthlyCost: 12900, monthlyRevenue: 17800 },
+  { id: "tailor", name: "Terzi ve moda atölyesi", product: "Özel dikim ve onarım", setup: 24000, monthlyCost: 7100, monthlyRevenue: 12600 },
+  { id: "garden", name: "Kent bahçeciliği", product: "Fide, bitki ve bakım", setup: 28000, monthlyCost: 8300, monthlyRevenue: 13900 },
+  { id: "education", name: "Eğitim atölyesi", product: "Kurs ve birebir ders", setup: 38000, monthlyCost: 11200, monthlyRevenue: 18700 },
+  { id: "repair", name: "Teknik servis", product: "Cihaz onarım hizmeti", setup: 45000, monthlyCost: 16400, monthlyRevenue: 25700 },
 ];
 
 export const universityPrograms = [
