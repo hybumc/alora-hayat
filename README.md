@@ -6,8 +6,7 @@ Türkçe, tek oyunculu bir yaşam simülasyonu. Adını, soyadını ve doğum ta
 
 - **1.000 etkinlik seçeneği:** 20 etkinlik türünü 10 farklı mekân ve 5 eşlikçi seçeneğiyle ara, yaşına ve bakiyene uygun olanlara katıl.
 - **Aile:** Anne, baba ve kardeşlerinle sohbet et, birlikte vakit geçir, hediye al, ebeveynlerinden destek iste veya ailene para gönder. Birlikte zaman geçirmek yaşı ilerletmez.
-- **Eğitim:** 7 yaşında ilkokula başlama seçimi, okul yazılıları, ortaokul değerlendirmesi, LGS puanı ve lise tercihleri, YKS sonucu ve puanına uygun üniversite bölümleri.
-- **Eğitim:** Yazılı, deneme, LGS, YKS, ehliyet ve kamu sınavlarında üç soruyu yanıtla. Okul ortalaman yazılılardan etkilenir; doğru cevap ve becerilerin puanını, lise ve üniversite tercihlerini belirler.
+- **Eğitim:** 7 yaşında ilkokula başla; yazılı, deneme, LGS ve YKS sınavlarında üç soruyu yanıtla. Okul ortalaman ve becerilerin sınav puanını, lise ve üniversite tercihlerini etkiler. Ehliyet ve kamu sınavları da oynanabilir.
 - **Kariyer:** Eğitim, yaş, beceri ve ehliyet koşullarına bağlı 40 meslek; kamu kadroları için en az 65 puanlı gerçek bir sınav. İlanlarda aylık maaş ve başvuru koşulları görünür.
 - **Sosyal medya:** Video paylaşımları izlenme, beğeni ve takipçi kazandırır. Yaş başına üç video sınırı ve aylık gelir üst sınırı bulunur; tekrar tıklayarak para üretilemez.
 - **Ekonomi:** Banka hesap hareketleri ve birikime yıllık faiz; 18+ kredi, hisse senedi, yarışmalar ve aynı anda işletilebilen çoklu şirketler. Her şirketin ürününü, aylık gelirini ve giderini takip et.
@@ -25,7 +24,7 @@ npm.cmd install
 npm.cmd run desktop:dist
 ```
 
-Kurulum dosyası `release\Alora-Hayat-Setup-0.2.0-x64.exe` yolunda oluşturulur. NSIS sihirbazı kullanıcıya özel kurulum yapar, masaüstü ve Başlat menüsü kısayolları ekler; uygulama Windows **Ayarlar → Uygulamalar → Yüklü uygulamalar** listesinde görünür ve oradan kaldırılabilir. Oyun kayıtları kaldırma sırasında silinmez.
+Kurulum dosyası `release\Alora-Hayat-Setup-1.0.0-x64.exe` yolunda oluşturulur. NSIS sihirbazı kullanıcıya özel kurulum yapar, masaüstü ve Başlat menüsü kısayolları ekler; uygulama Windows **Ayarlar → Uygulamalar → Yüklü uygulamalar** listesinde görünür ve oradan kaldırılabilir. Oyun kayıtları kaldırma sırasında silinmez.
 
 ## Güncelleme
 
