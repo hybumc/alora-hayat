@@ -404,3 +404,125 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+select, textarea { font: inherit; }
+select { min-width: 0; height: 40px; padding: 0 11px; color: #5b534b; border: 1px solid #e8e4de; border-radius: 10px; background: #fffefa; font-size: 10px; }
+input:focus-visible, select:focus-visible { outline: 3px solid #e6a783; outline-offset: 2px; }
+.activity-tools { display: flex; align-items: end; gap: 12px; margin-bottom: 15px; }
+.activity-tools .search-form { flex: 1; }
+.search-form { display: flex; align-items: center; gap: 8px; }
+.search-form input, .inline-form input, .business-form input, .stock-form input { width: 100%; min-width: 0; height: 40px; padding: 0 11px; color: #514a44; border: 1px solid #e8e4de; border-radius: 10px; background: #fffefa; font-size: 10px; }
+.search-form .secondary-button { min-height: 40px; }
+.filter-label { display: grid; gap: 5px; color: #84796f; font-size: 9px; font-weight: 700; }
+.activity-catalog { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.catalog-card, .stock-card, .contest-card { display: flex; flex-direction: column; min-width: 0; padding: 15px; border: 1px solid #eeece6; border-radius: 14px; background: #fffefa; transition: transform .18s ease, box-shadow .18s ease; }
+.catalog-card:hover, .stock-card:hover, .contest-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px #51402b0d; }
+.catalog-card-top, .catalog-card-bottom, .stock-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.catalog-card-top .panel-icon { width: 31px; height: 31px; }
+.catalog-card h3, .stock-card h3, .contest-card h3 { margin: 13px 0; color: #514a44; font: 700 12px/1.5 Manrope, "Segoe UI", sans-serif; }
+.catalog-card-bottom { align-items: baseline; margin-top: auto; margin-bottom: 11px; }
+.catalog-card-bottom b { color: #6d5948; font: 700 12px Manrope, sans-serif; }
+.catalog-card-bottom small, .stock-card > small { color: #9c9288; font-size: 9px; }
+.catalog-card .primary-button { min-height: 36px; font-size: 9px; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 3px; color: #8d8379; font-size: 10px; }
+.pagination .secondary-button { min-height: 34px; font-size: 9px; }
+.family-summary, .social-metrics, .score-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; margin-bottom: 15px; }
+.family-summary > div { display: grid; gap: 4px; padding: 15px; border: 1px solid #eeece6; border-radius: 13px; background: #fffefa; }
+.family-summary b { color: #635347; font: 700 17px Manrope, sans-serif; }
+.family-summary span { color: #988c80; font-size: 9px; }
+.family-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.family-card { padding: 18px; border: 1px solid #eee8e2; border-radius: 16px; background: linear-gradient(145deg, #fffefa, #fcf8f2); }
+.family-avatar { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 14px; border-radius: 15px; background: #faeee4; font-size: 23px; }
+.family-card .eyebrow { margin-bottom: 5px; }
+.family-card h2 { margin: 0 0 14px; color: #50473f; font: 700 17px Manrope, sans-serif; }
+.family-card .relationship-meter { margin-bottom: 7px; }
+.family-card > small { color: #9e9389; font-size: 9px; }
+.family-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 11px; }
+.family-actions button { min-height: 33px; padding: 0 10px; font-size: 9px; }
+.gift-row { display: flex; gap: 7px; }
+.gift-row select { flex: 1; }
+.gift-row .primary-button { min-height: 39px; padding: 0 10px; font-size: 9px; }
+.family-transfer { margin-top: 15px; }
+.family-transfer > p { color: #91877e; font-size: 10px; }
+.inline-form { display: flex; align-items: end; gap: 10px; }
+.inline-form label, .business-form label, .stock-form label { display: grid; flex: 1; min-width: 0; gap: 6px; color: #84796f; font-size: 9px; font-weight: 700; }
+.inline-form select { width: 100%; }
+.inline-form .primary-button, .inline-form .secondary-button { min-height: 40px; font-size: 9px; }
+.profession-list { display: grid; gap: 9px; }
+.profession-card { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 16px; border: 1px solid #eeece6; border-radius: 13px; background: #fffefa; }
+.profession-card h3 { margin: 0 0 5px; color: #534b43; font: 700 12px Manrope, sans-serif; }
+.profession-card .eyebrow { margin-bottom: 5px; font-size: 8px; }
+.profession-card p:not(.eyebrow) { margin: 0; color: #9a9087; font-size: 9px; }
+.profession-pay { display: grid; justify-items: end; gap: 4px; flex: 0 0 auto; }
+.profession-pay small { color: #a2978d; font-size: 8px; }
+.profession-pay b { color: #615549; font: 700 11px Manrope, sans-serif; }
+.profession-pay .primary-button { min-height: 32px; margin-top: 3px; padding: 0 10px; font-size: 8px; }
+.profession-pay .primary-button:disabled { max-width: 130px; }
+.career-metrics { align-items: center; flex-wrap: wrap; gap: 18px 30px; margin-top: 12px; }
+.career-metrics .secondary-button, .career-metrics .danger-button { min-height: 34px; padding: 0 10px; font-size: 9px; }
+.exam-list { display: grid; gap: 7px; }
+.exam-row { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: 1px solid #eeece6; border-radius: 11px; background: #fffefa; }
+.exam-row > span { font-size: 18px; }
+.exam-row div { display: grid; gap: 4px; }
+.exam-row b { color: #61584f; font-size: 10px; }
+.exam-row small { color: #a59c93; font-size: 8px; }
+.exam-row strong { margin-left: auto; color: #75644f; font-size: 9px; text-align: right; }
+.exam-card .inline-form { margin: 12px 0; }
+.exam-card .inline-form select { width: 100%; }
+.market-tabs { display: flex; gap: 7px; margin: -5px 0 17px; padding-bottom: 9px; border-bottom: 1px solid #edeae4; }
+.market-tabs button { padding: 9px 13px; color: #81776e; border: 0; border-radius: 9px; background: transparent; font-size: 10px; font-weight: 600; }
+.market-tabs button.active { color: #965d48; background: #f9eee6; }
+.stock-grid, .contest-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.stock-heading { align-items: flex-start; }
+.stock-heading .eyebrow { margin-bottom: 4px; }
+.stock-card h3 { margin: 0; }
+.stock-change { padding: 5px 7px; color: #66836c; border-radius: 7px; background: #eaf1e7; font-size: 9px; font-weight: 700; }
+.stock-change.negative { color: #a25c50; background: #f8e9e4; }
+.stock-price { margin: 14px 0 5px; color: #574d44; font: 700 17px Manrope, sans-serif; }
+.stock-card > small { margin-bottom: 12px; }
+.stock-form { display: flex; align-items: end; gap: 6px; margin-top: auto; }
+.stock-form label { max-width: 75px; }
+.stock-form .primary-button, .stock-form .secondary-button { min-height: 36px; padding: 0 10px; font-size: 9px; }
+.market-note { margin: 13px 0 0; color: #968b80; font-size: 9px; line-height: 1.7; }
+.business-form { display: grid; gap: 12px; max-width: 560px; }
+.business-form label input, .business-form label select { width: 100%; }
+.business-form > .primary-button { justify-self: start; }
+.business-card { padding: 21px; border: 1px solid #e6e9dc; border-radius: 15px; background: #f8faf2; }
+.business-card h2 { margin: 0; color: #4f5849; font: 700 19px Manrope, sans-serif; }
+.business-card > p:not(.eyebrow) { color: #8c9383; font-size: 10px; }
+.business-card .danger-button { margin-top: 17px; min-height: 36px; font-size: 9px; }
+.contest-card > span { font-size: 22px; }
+.contest-card h3 { margin: 5px 0 8px; }
+.contest-card > p:not(.eyebrow) { margin: 0 0 13px; color: #978d82; font-size: 9px; }
+.contest-card .primary-button { min-height: 36px; margin-top: auto; font-size: 9px; }
+.loan-card { margin: 14px 0; }
+.loan-card > p { color: #91877e; font-size: 10px; line-height: 1.6; }
+.loan-card .inline-form > form { display: flex; align-items: end; gap: 8px; flex: 1; min-width: 0; }
+.loan-card .inline-form label { min-width: 80px; }
+.social-metrics { margin-bottom: 15px; }
+.social-metrics .balance-panel { min-width: 0; }
+
+@media (max-width: 800px) {
+  .activity-catalog { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .activity-tools { align-items: stretch; flex-wrap: wrap; }
+  .activity-tools .search-form { flex-basis: 100%; }
+  .activity-tools > .soft-label { align-self: center; margin-left: auto; }
+  .sidebar { overflow-y: auto; }
+}
+@media (max-width: 540px) {
+  .activity-catalog, .family-grid, .stock-grid, .contest-grid, .family-summary, .social-metrics, .score-grid { grid-template-columns: 1fr; }
+  .activity-tools .filter-label { flex: 1; }
+  .activity-tools > .soft-label { margin-left: 0; }
+  .family-actions { gap: 5px; }
+  .family-actions button { flex: 1 1 40%; }
+  .gift-row { align-items: stretch; flex-direction: column; }
+  .inline-form, .loan-card .inline-form, .loan-card .inline-form > form { align-items: stretch; flex-direction: column; }
+  .profession-card { align-items: flex-start; }
+  .profession-pay { align-items: end; }
+  .career-metrics { gap: 14px; }
+  .exam-row { align-items: flex-start; flex-wrap: wrap; }
+  .exam-row strong { width: 100%; margin-left: 29px; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *:before, *:after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
