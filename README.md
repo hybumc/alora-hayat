@@ -32,3 +32,7 @@ Geliştirme sırasında masaüstü uygulamasını `npm.cmd run desktop:dev`, tar
 Oyun ilerlemesi cihazda otomatik kaydedilir. Ayarlar ekranından kayıt dışa aktarılabilir, içe alınabilir veya sıfırlanabilir. Uygulamayı kaldırmadan önce kaydı dışa aktar; kaldırma işlemi kayıt verisini ayrıca silmez.
 
 Sosyal medya 13+, romantik ilişki etkinlikleri 16+, iş 16+, ehliyet, kredi, borsa, şirket kurma ve şans oyunu 18+ yaşında açılır. Yetişkin etkinlikleri ve sınavlar uygun yaşa gelmeden kullanılamaz.
+
+## Lisans
+
+Alora Hayat, kişisel ve ticari olmayan kullanım için sınırlı izin veren özel bir lisansla dağıtılır. Kaynak kodunu veya varlıkları kopyalama, değiştirme, başka projelerde kullanma ya da yeniden dağıtma izni verilmez. Ayrıntılar ve izin koşulları için [`LICENSE`](LICENSE) dosyasına bakın. Üçüncü taraf bileşenler kendi lisanslarına tabidir.

@@ -1,0 +1,71 @@
+ALORA HAYAT ÖZEL YAZILIM LİSANSI
+
+Telif Hakkı © 2026 Alora Hayat. Tüm hakları saklıdır.
+
+Bu lisans, Alora Hayat projesine ait özgün kaynak kodu, grafik ve ses varlıkları,
+tasarımlar, metinler ve diğer proje materyalleri ("Materyaller") için geçerlidir.
+Materyallerle birlikte dağıtılan üçüncü taraf bileşenler kendi lisanslarına tabidir.
+
+1. İzin verilen kullanım
+
+Resmî Alora Hayat GitHub Releases sayfasından yayımlanan kurulum dosyasını
+indirmeniz, kişisel ve ticari olmayan eğlence amacıyla kendi cihazlarınıza
+kurmanız ve çalıştırmanız için sınırlı, münhasır olmayan, devredilemez ve
+geri alınabilir bir izin verilir. Resmî sürüm sayfasının bağlantısını
+paylaşabilirsiniz.
+
+2. Yasaklanan kullanımlar
+
+Bu lisans açıkça izin vermedikçe, önceden yazılı izin almadan:
+
+- Materyallerin tamamını veya bir bölümünü kopyalayamaz, çoğaltamaz,
+  yayımlayamaz, yeniden dağıtamaz, satamaz, kiralayamaz veya alt lisans
+  veremezsiniz.
+- Kaynak kodunu başka bir projede kullanamaz, değiştiremez, uyarlayamaz,
+  çeviremez veya Materyallerden türev eser oluşturamazsınız.
+- Uygulamayı ya da Materyalleri ticari amaçla kullanamaz veya başkalarının
+  erişimine açamazsınız.
+- Telif, marka veya lisans bildirimlerini kaldıramaz ya da gizleyemezsiniz.
+- Uygulanabilir hukukun izin vermediği ölçüde uygulamayı tersine
+  mühendisliğe tabi tutamaz, kaynak koda dönüştüremez veya bileşenlerine
+  ayıramazsınız.
+
+3. Kaynak deposuna erişim
+
+Deponun GitHub üzerinde herkese açık olması, Materyalleri serbestçe kullanma
+veya yeniden dağıtma izni vermez. GitHub'ın hizmet şartlarının platform
+özelliklerini (ör. depoyu görüntüleme veya GitHub içinde çatallama) çalıştırmak
+için zorunlu kıldığı sınırlı haklar saklıdır; bu haklar GitHub dışındaki
+kullanım için genel bir lisans oluşturmaz. Bu bölüm, GitHub'ın hizmet şartlarını
+geçersiz kılmaz.
+
+4. Hak sahipliği ve diğer bileşenler
+
+Materyaller üzerindeki tüm telif ve fikrî mülkiyet hakları Alora Hayat'ın hak
+sahibinde kalır. Bu lisans yalnızca yukarıda açıkça belirtilen izinleri verir.
+Electron, Vite ve diğer üçüncü taraf yazılımlar bu lisansla yeniden
+lisanslanmaz; ilgili bileşenlerin kendi lisansları geçerlidir.
+
+5. Süre ve sona erme
+
+Bu lisanstaki koşullara uyduğunuz sürece verilen sınırlı izni kullanabilirsiniz.
+Koşulları ihlal etmeniz hâlinde izin sona erer; Materyallerin kullanımını
+durdurmanız ve elinizdeki izinsiz kopyaları silmeniz gerekir. Uygulanabilir
+hukuk kapsamındaki vazgeçilemez haklar bundan etkilenmez.
+
+6. Garanti ve sorumluluk
+
+Uygulama ve Materyaller, uygulanabilir hukukun izin verdiği azami ölçüde,
+herhangi bir açık veya örtülü garanti olmaksızın "olduğu gibi" sunulur.
+Uygulanabilir hukukun izin verdiği ölçüde, Alora Hayat'ın hak sahibi; veri
+kaybı, iş kesintisi veya dolaylı zararlardan sorumlu tutulamaz. Bu bölüm,
+kanunen sınırlandırılamayan sorumlulukları ortadan kaldırmaz.
+
+7. İzin ve iletişim
+
+Bu lisansın verdiğinden daha geniş kullanım izni için önceden yazılı izin alın.
+İzin talepleri ve lisansla ilgili bildirimler:
+https://github.com/hybumc/alora-hayat/issues
+
+Bu lisans, uygulanabilir hukukun tanıdığı zorunlu istisnaları veya
+vazgeçilemez tüketici haklarını kısıtlamaz.

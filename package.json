@@ -6,6 +6,7 @@
     "type": "git",
     "url": "https://github.com/hybumc/alora-hayat.git"
   },
+  "license": "UNLICENSED",
   "private": true,
   "version": "0.1.0",
   "type": "module",
