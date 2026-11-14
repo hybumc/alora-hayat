@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Alora Hayat</string>
+    <string name="title_activity_main">Alora Hayat</string>
+    <string name="package_name">tr.alora.hayat</string>
+    <string name="custom_url_scheme">tr.alora.hayat</string>
+</resources>

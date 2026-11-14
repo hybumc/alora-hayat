@@ -13,7 +13,7 @@ Türkçe, tek oyunculu bir yaşam simülasyonu. Adını, soyadını ve doğum ta
 - **Zihin ve tatil:** Zihinsel iyi oluş göstergesi; nefes molası, egzersiz ve sekiz resimli otel seçeneği. 1–7 gecelik tatilini tek başına, ailenle, kardeşinle veya ilişkin uygunsa sevgilinle planla.
 - **Ekonomi:** Banka hesap hareketleri ve birikime yıllık faiz; 18+ kredi, hisse senedi, yarışmalar ve aynı anda işletilebilen çoklu şirketler. Her şirketin ürününü, aylık gelirini ve giderini takip et.
 - **İlişkiler ve yetişkin etkinlikleri:** Sohbet, akşam yemeği, gönül alma, özel gün, gezi ve ailelerle tanışma gibi ilişki etkinlikleri. Her yaşta ortak etkinlik sınırı var; romantik ilişki 16+, yetişkin etkinlikleri 18+ yaşında açılır.
-- **Arayüz:** Baştan yenilenmiş koyu petrol yeşili ve mint temalı tasarım, güncellenmiş ikonlar, hareketler ve isteğe bağlı düğme sesleri.
+- **Arayüz:** Yenilenen sıcak renkli tasarım, hareketler, isteğe bağlı düğme sesleri ve telefonda alt gezinme çubuğu.
 
 Oyun içindeki para yalnızca simülasyon bakiyesidir; gerçek para değildir ve gerçek paraya dönüştürülemez. Bu bilgilendirme oyunun **Ayarlar** ekranında gösterilir.
 
@@ -33,6 +33,21 @@ Kurulum dosyası sürüm numarasına göre `release\Alora-Hayat-Setup-<sürüm>-
 Kurulu Windows sürümleri açılışta GitHub Releases sayfasında yeni sürüm arar. Yeni sürüm bulunduğunda uyarı görünür; **Ayarlar → Uygulama güncellemeleri** bölümünden isteğe bağlı olarak indirip kurabilirsin. Güncelleme kayıtlarını korur. Depo ve Release varlıkları artık herkese açık erişilebilir; bu nedenle GitHub güncelleme akışı ve yeni kurucular indirilebilir. v0.1.0 kurulumlarında otomatik güncelleme denetimi yoktur; bu sürüm bir defaya mahsus elle kurulmalıdır.
 
 Geliştirme sırasında masaüstü uygulamasını `npm.cmd run desktop:dev`, tarayıcı arayüzünü `npm.cmd run dev` ile başlat. Oyun testleri `npm.cmd test`, web arayüzünün üretim derlemesi `npm.cmd run build` komutlarıyla çalışır.
+
+## Android uygulaması
+
+Android sürümü aynı oyunu Capacitor WebView içinde çalıştırır; ekran boyutuna uyumlu arayüzü, dokunma hedeflerini ve alt bölüm menüsünü kullanır. Yayınlanan APK, [GitHub Releases](https://github.com/hybumc/alora-hayat/releases) sayfasına eklenir. Android uygulamasında **Ayarlar → Uygulama güncellemeleri** yeni sürümlerin bağlantısını açar. APK'yi güncellerken uygulamayı kaldırmadan kur; kaldırma işlemi cihazdaki kayıtları silebilir.
+
+Yerel geliştirme için Node.js 20+, JDK 21 ve Android SDK gerekir:
+
+```powershell
+npm.cmd ci
+npm.cmd run android:sync
+Set-Location android
+.\gradlew.bat assembleDebug
+```
+
+Test APK'si `android\app\build\outputs\apk\debug\app-debug.apk` yolunda oluşur. GitHub Release'ine imzalı sürüm APK'si eklemek için Android release workflow'u çalışır; kalıcı imzalama anahtarı GitHub Actions secret'larında tutulur.
 
 ## Kayıt ve yaş sınırları
 

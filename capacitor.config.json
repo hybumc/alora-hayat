@@ -1,0 +1,8 @@
+{
+  "appId": "tr.alora.hayat",
+  "appName": "Alora Hayat",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

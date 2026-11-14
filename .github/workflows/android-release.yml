@@ -1,0 +1,76 @@
+name: Android APK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build, for example v1.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install dependencies and sync Android project
+        run: |
+          npm ci
+          npm run android:sync
+      - name: Prepare release signing key
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ALORA_ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ALORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/alora-release.p12"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/alora-release.p12" >> "$GITHUB_ENV"
+          alias=$(keytool -list -keystore "$RUNNER_TEMP/alora-release.p12" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" | awk -F, '/PrivateKeyEntry/ {print $1; exit}')
+          test -n "$alias"
+          echo "ANDROID_KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ALORA_ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ALORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+      - name: Name APK
+        run: |
+          version=$(node -p "require('./package.json').version")
+          cp android/app/build/outputs/apk/release/app-release.apk "Alora-Hayat-Android-${version}.apk"
+          echo "APK_NAME=Alora-Hayat-Android-${version}.apk" >> "$GITHUB_ENV"
+      - name: Attach APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$RELEASE_TAG" "$APK_NAME" --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Save APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alora-Hayat-Android
+          path: ${{ env.APK_NAME }}
+          if-no-files-found: error

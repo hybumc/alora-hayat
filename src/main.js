@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import {
   activityCount, applyForCareer, beginExam, canDo, careerRequirement, chooseEvent, chooseUniversityProgram,
   closeBusiness, createLife, doActivity, enterContest, getActivityOptions, isValidLife, leaveCareer,
@@ -24,6 +26,8 @@ let marketTab = "stocks";
 let soundEnabled = localStorage.getItem("alora-sounds") !== "off";
 let updateState = { status: "idle", message: "Güncelleme denetlenmedi.", version: "" };
 let audioContext = null;
+let mobileMoreOpen = false;
+const isAndroidApp = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -42,6 +46,7 @@ const navItems = [
   ["market", "📊", "Ekonomi"], ["relations", "💞", "İlişkiler"], ["vacations", "🏖️", "Tatiller"], ["social", "📱", "Sosyal"],
   ["settings", "⚙️", "Ayarlar"],
 ];
+const mobileNavItems = ["life", "activities", "bank", "relations"];
 const postIdeas = [
   ["🌅", "Günlük vlog", "Bugün kendime güzel bir gün hediye ettim."],
   ["📚", "Öğrenme günlüğü", "Bugün yeni bir şey öğrendim, her gün biraz daha."],
@@ -149,6 +154,15 @@ function shell(content) {
           <div class="mini-profile"><div class="avatar">${esc(life.firstName.slice(0, 1).toLocaleUpperCase("tr-TR"))}</div><div><b>${esc(life.name)}</b><small>${life.age} yaşında</small></div></div>
         </div>
       </aside>
+      ${mobileMoreOpen ? `<div class="mobile-more-menu" aria-label="Diğer bölümler">${navItems.filter(([id]) => !mobileNavItems.includes(id)).map(([id, icon, label]) => `
+        <button class="mobile-more-link ${tab === id ? "active" : ""}" data-nav="${id}"><span>${icon}</span>${label}</button>`).join("")}</div>` : ""}
+      <nav class="mobile-nav" aria-label="Ana gezinme">
+        ${mobileNavItems.map((id) => {
+          const [, icon, label] = navItems.find(([itemId]) => itemId === id);
+          return `<button class="mobile-nav-link ${tab === id ? "active" : ""}" data-nav="${id}" aria-current="${tab === id ? "page" : "false"}"><span>${icon}</span><small>${label}</small></button>`;
+        }).join("")}
+        <button class="mobile-nav-link ${mobileMoreOpen || !mobileNavItems.includes(tab) ? "active" : ""}" data-action="mobile-more" aria-expanded="${mobileMoreOpen}"><span>☰</span><small>Daha</small></button>
+      </nav>
       <main class="main-area">
         <header class="topbar">
           <div class="crumb"><span>ALORA HAYAT</span><i>/</i><b>${navItems.find(([id]) => id === tab)?.[2] || "Hayatım"}</b></div>
@@ -442,12 +456,15 @@ function vacationsPage() {
     <section class="section-block"><div class="section-heading"><div><p class="eyebrow">YOL ANILARI</p><h2>Gittiğin tatiller</h2></div></div><div class="vacation-history">${life.vacations.length ? life.vacations.map((trip) => `<article><span>🏖️</span><div><b>${esc(trip.hotelName)}</b><small>${trip.age}. yaş · ${trip.nights} gece · ${esc(companions.find(([id]) => id === trip.companion)?.[1] || "tek başına")}</small></div><strong>${money(trip.cost)}</strong></article>`).join("") : `<div class="empty-state"><p>Henüz tatil anın yok. İlk yolculuğunu planla!</p></div>`}</div></section>`;
 }
 function settingsPage() {
+  const uninstallInfo = isAndroidApp
+    ? "Android: Ayarlar → Uygulamalar → Alora Hayat bölümünden kaldırabilirsin. Android, kaldırma sırasında bu uygulamanın cihazdaki kayıtlarını da silebilir; önce kayıt dosyanı dışa aktar."
+    : "Windows Ayarlar → Uygulamalar → Yüklü uygulamalar bölümünde “Alora Hayat”ı bulup Kaldır'ı seç. İlerleme kayıtları kaldırma işleminden sonra cihazda kalır.";
   return `<div class="page-intro"><p class="eyebrow">SENİN OYUNUN, SENİN KONTROLÜN</p><h1>Ayarlar</h1><p>Kayıt dosyanı yönet ve uygulamayı istediğin gibi kullan.</p></div>
     <div class="settings-grid">
       <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon lavender">🔊</span><div><p class="eyebrow">OYUN SESLERİ</p><h3>Tıklama sesi</h3></div></div><p>Arayüz düğmelerine dokunduğunda kısa, yumuşak bir ses çal.</p><button class="secondary-button" data-action="toggle-sound">${soundEnabled ? "Sesleri kapat" : "Sesleri aç"}</button></section>
-      <section class="panel-card setting-card update-card"><div class="panel-title"><span class="panel-icon mint">⬆️</span><div><p class="eyebrow">SÜRÜM ${esc(__APP_VERSION__)}</p><h3>Uygulama güncellemeleri</h3></div></div><p>${esc(updateState.message)}</p>${updateState.status === "available" ? `<button class="primary-button" data-action="update-download">Sürüm ${esc(updateState.version)} · indir ve kur →</button>` : updateState.status === "downloaded" ? `<button class="primary-button" data-action="update-install">Yeniden başlat ve güncelle →</button>` : `<button class="secondary-button" data-action="update-check" ${updateState.status === "checking" || updateState.status === "downloading" ? "disabled" : ""}>${updateState.status === "checking" ? "Güncelleme aranıyor…" : "Güncellemeleri denetle"}</button>`}<small>Güncellemeler isteğe bağlıdır. Yeni sürümü yüklemek mevcut kayıtlarını silmez.</small></section>
+      <section class="panel-card setting-card update-card"><div class="panel-title"><span class="panel-icon mint">⬆️</span><div><p class="eyebrow">SÜRÜM ${esc(__APP_VERSION__)}</p><h3>Uygulama güncellemeleri</h3></div></div>${isAndroidApp ? `<p>Android için yeni sürümler GitHub Releases sayfasında yayımlanır. Yeni APK’yi indirip kurarken mevcut uygulamanın üzerine yükle.</p><button class="primary-button" data-action="android-release">Android sürümünü görüntüle →</button><small>Yeni sürümler isteğe bağlıdır. Uygulamayı kaldırmadan güncellemek kayıtlarını korur.</small>` : `<p>${esc(updateState.message)}</p>${updateState.status === "available" ? `<button class="primary-button" data-action="update-download">Sürüm ${esc(updateState.version)} · indir ve kur →</button>` : updateState.status === "downloaded" ? `<button class="primary-button" data-action="update-install">Yeniden başlat ve güncelle →</button>` : `<button class="secondary-button" data-action="update-check" ${updateState.status === "checking" || updateState.status === "downloading" ? "disabled" : ""}>${updateState.status === "checking" ? "Güncelleme aranıyor…" : "Güncellemeleri denetle"}</button>`}<small>Güncellemeler isteğe bağlıdır. Yeni sürümü yüklemek mevcut kayıtlarını silmez.</small>`}</section>
       <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon mint">✓</span><div><p class="eyebrow">OTOMATİK KAYIT</p><h3>İlerlemen güvende</h3></div></div><p>Her seçimin ve yaptığın etkinlik bu cihazda otomatik kaydedilir. Oyunu yeniden açtığında kaldığın yerden devam edersin.</p><button class="secondary-button" data-action="export">Kayıt dosyasını dışa aktar ↓</button><button class="secondary-button" data-action="import">Kayıt dosyasını içe aktar ↑</button><input id="import-file" type="file" accept="application/json,.json" hidden /></section>
-      <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon peach">⚙</span><div><p class="eyebrow">OYUNU YÖNET</p><h3>Yeni bir başlangıç</h3></div></div><p>Mevcut hayatını sıfırlayabilir veya uygulamayı Windows ayarlarından kaldırabilirsin.</p><button class="danger-button" data-action="reset">Hayatımı sıfırla</button><div class="uninstall-note"><b>Uygulamayı kaldırmak için</b><p>Windows <b>Ayarlar → Uygulamalar → Yüklü uygulamalar</b> bölümünde “Alora Hayat”ı bulup Kaldır'ı seç. İlerleme kayıtları kaldırma işleminden sonra cihazda kalır; önce dışa aktarabilir veya oyundan sıfırlayabilirsin.</p></div></section>
+      <section class="panel-card setting-card"><div class="panel-title"><span class="panel-icon peach">⚙</span><div><p class="eyebrow">OYUNU YÖNET</p><h3>Yeni bir başlangıç</h3></div></div><p>Mevcut hayatını sıfırlayabilir veya uygulamayı cihaz ayarlarından kaldırabilirsin.</p><button class="danger-button" data-action="reset">Hayatımı sıfırla</button><div class="uninstall-note"><b>Uygulamayı kaldırmak için</b><p>${uninstallInfo}</p></div></section>
     </div>
     <div class="disclaimer"><span>♡</span><p><b>Oyun içi bakiye bilgilendirmesi</b><br>Bu oyundaki tüm para sanaldır; gerçek para değildir, satın alınamaz ve gerçek paraya dönüştürülemez. Şans oyunu yalnızca 18 yaşından itibaren oyun içi bakiyeyle kullanılabilir.</p></div>`;
 }
@@ -611,6 +628,7 @@ app.addEventListener("click", (event) => {
   if (!target.disabled) playClick();
   if (target.dataset.nav) {
     tab = target.dataset.nav;
+    mobileMoreOpen = false;
     notice = "";
     render();
     return;
@@ -642,6 +660,10 @@ app.addEventListener("click", (event) => {
     return;
   }
   switch (target.dataset.action) {
+    case "mobile-more":
+      mobileMoreOpen = !mobileMoreOpen;
+      render();
+      break;
     case "age": doAge(); break;
     case "catalog": perform("catalog", { id: target.dataset.id }); break;
     case "exercise": perform("exercise"); break;
@@ -731,6 +753,11 @@ app.addEventListener("click", (event) => {
       window.aloraUpdater?.installUpdate().catch((error) => {
         updateState = { status: "error", message: `Güncelleme kurulamadı: ${error.message}` };
         render();
+      });
+      break;
+    case "android-release":
+      Browser.open({ url: "https://github.com/hybumc/alora-hayat/releases/latest" }).catch((error) => {
+        flash(`Sürüm sayfası açılamadı: ${error.message}`);
       });
       break;
     case "import": importInput = app.querySelector("#import-file"); importInput?.click(); break;
