@@ -2,9 +2,11 @@ import {
   activityCount, applyForCareer, beginExam, canDo, careerRequirement, chooseEvent, chooseUniversityProgram,
   closeBusiness, createLife, doActivity, enterContest, getActivityOptions, isValidLife, leaveCareer,
   loadLife, manageLoan, migrateLife, performFamilyAction, performRelationshipAction, saveLife, startBusiness,
-  submitExam, tradeStock, advanceYear,
+  submitExam, tradeStock, advanceYear, performVacation,
 } from "./game.js";
-import { businessSectors, contestTypes, familyGifts, professions, stockMarket, universityPrograms } from "./catalog.js";
+import {
+  businessSectors, contestTypes, familyGifts, professions, stockMarket, universityPrograms, vacationHotels,
+} from "./catalog.js";
 import "./style.css";
 
 const app = document.querySelector("#app");
@@ -32,30 +34,57 @@ const dateText = (date) => new Date(`${date}T00:00:00`).toLocaleDateString("tr-T
 });
 const statLabel = {
   health: "Sağlık", happiness: "Mutluluk", intelligence: "Zekâ",
-  discipline: "Disiplin", social: "Sosyallik",
+  discipline: "Disiplin", social: "Sosyallik", mental: "Zihin",
 };
 const navItems = [
   ["life", "🏠", "Hayatım"], ["activities", "✨", "Etkinlikler"], ["family", "👨‍👩‍👧", "Ailem"],
   ["education", "📚", "Eğitim"], ["career", "💼", "Kariyer"], ["bank", "🏦", "Banka"],
-  ["market", "📊", "Ekonomi"], ["relations", "💞", "İlişkiler"], ["social", "📱", "Sosyal"],
+  ["market", "📊", "Ekonomi"], ["relations", "💞", "İlişkiler"], ["vacations", "🏖️", "Tatiller"], ["social", "📱", "Sosyal"],
   ["settings", "⚙️", "Ayarlar"],
 ];
+const postIdeas = [
+  ["🌅", "Günlük vlog", "Bugün kendime güzel bir gün hediye ettim."],
+  ["📚", "Öğrenme günlüğü", "Bugün yeni bir şey öğrendim, her gün biraz daha."],
+  ["🎉", "Küçük kutlama", "Küçük başarılar da kutlamaya değer!"],
+  ["🍳", "Mutfakta ne var?", "Bugün sevdiğim bir tarifi birlikte deneyelim."],
+  ["🏃", "Hareket molası", "Kendime iyi bakmak için kısa bir mola verdim."],
+  ["🎨", "Üretim masam", "Bir süredir uğraştığım şeyi sonunda tamamladım."],
+  ["🎧", "Şarkı önerisi", "Son günlerde en çok dinlediğim şarkı bu."],
+  ["🐾", "Pati arkadaşım", "Bugün karşılaştığım sevimli dostla tanışın."],
+  ["🧳", "Geziden kartpostal", "Bu manzarayı uzun süre hatırlayacağım."],
+  ["💬", "Soru-cevap", "Bugün bana merak ettiğiniz bir şeyi sorun."],
+  ["🌱", "Yeni bir alışkanlık", "Küçük bir adım attım, bakalım nereye varacak."],
+  ["📸", "Haftanın karesi", "Bu haftadan yüzümü güldüren bir an."],
+];
 
-function playClick() {
+function playSound(kind = "click") {
   if (!soundEnabled || !window.AudioContext) return;
   audioContext ||= new window.AudioContext();
   if (audioContext.state === "suspended") audioContext.resume();
-  const oscillator = audioContext.createOscillator();
-  const volume = audioContext.createGain();
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(640, audioContext.currentTime);
-  oscillator.frequency.exponentialRampToValueAtTime(420, audioContext.currentTime + 0.055);
-  volume.gain.setValueAtTime(0.045, audioContext.currentTime);
-  volume.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.06);
-  oscillator.connect(volume);
-  volume.connect(audioContext.destination);
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + 0.06);
+  const notes = {
+    click: [620],
+    positive: [620, 830],
+    negative: [460, 310],
+    error: [300, 220],
+    notify: [520, 660, 880],
+  }[kind] || [620];
+  notes.forEach((frequency, index) => {
+    const start = audioContext.currentTime + index * 0.085;
+    const oscillator = audioContext.createOscillator();
+    const volume = audioContext.createGain();
+    oscillator.type = kind === "negative" || kind === "error" ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    volume.gain.setValueAtTime(0.04, start);
+    volume.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+    oscillator.connect(volume);
+    volume.connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.12);
+  });
+}
+
+function playClick() {
+  playSound("click");
 }
 
 function persist() {
@@ -166,7 +195,7 @@ function examDialog() {
 }
 
 function lifePage() {
-  const stats = ["health", "happiness", "intelligence", "discipline", "social"].map(statCard).join("");
+  const stats = ["health", "happiness", "intelligence", "discipline", "social", "mental"].map(statCard).join("");
   return `
     <section class="hero-card">
       <div class="hero-copy"><p class="eyebrow">SENİN HİKÂYEN, SENİN YOLUN</p>
@@ -209,6 +238,7 @@ function lifePage() {
       <div class="quick-actions">
         <button class="quick-action" data-action="exercise"><span>🏃</span><b>Hareket et</b><small>Sağlığını ve enerjini artır</small></button>
         <button class="quick-action" data-action="study"><span>📚</span><b>Bir şeyler öğren</b><small>Zekânı ve disiplinini geliştir</small></button>
+        <button class="quick-action" data-action="mindful"><span>🧘</span><b>Kendine mola ver</b><small>Zihnini dinlendir ve toparlan</small></button>
         <button class="quick-action" data-nav="social" ${!canDo(life, "social") ? "disabled" : ""}><span>📱</span><b>Paylaşım yap</b><small>${canDo(life, "social") ? "Alora akışında sesini duyur" : "13 yaşında açılır"}</small></button>
       </div>
     </section>
@@ -388,18 +418,29 @@ function relationsPage() {
 
 function socialPage() {
   const eligible = canDo(life, "social");
-  const postTypes = [
-    ["🌅", "Güzel bir gün", "Bugün kendime güzel bir gün hediye ettim."],
-    ["📚", "Yeni öğrendiklerim", "Bugün yeni bir şey öğrendim, her gün biraz daha."],
-    ["🎉", "Küçük bir kutlama", "Küçük başarılar da kutlamaya değer!"],
-  ];
+  const postHistory = life.socialMedia.postHistory;
   return `<div class="page-intro"><p class="eyebrow">ALORA AKIŞI</p><h1>Sosyal dünyan</h1><p>Yaşadığın güzel anları paylaş; takipçi, görüntülenme ve beğeni kazan. Gelir için istikrarlı büyümen gerekir.</p></div>
     <div class="social-metrics"><div class="balance-panel"><small>Takipçi</small><b>${life.socialMedia.followers.toLocaleString("tr-TR")}</b><p>${life.socialMedia.posts} paylaşım</p></div><div class="balance-panel"><small>Toplam görüntülenme</small><b>${life.socialMedia.views.toLocaleString("tr-TR")}</b><p>${life.socialMedia.likes.toLocaleString("tr-TR")} beğeni</p></div><div class="balance-panel"><small>Aylık içerik geliri</small><b>${money(life.socialMedia.incomeMonthly)}</b><p>${life.socialMedia.followers >= 5000 ? "Yaş atlayınca yıllık gelirine eklenir" : "Gelir 5.000 takipçide açılır"}</p></div></div>
-    ${eligible ? `<div class="post-card"><p class="eyebrow">YILLIK VİDEO PLANI · ${life.socialMedia.postsThisAge}/3 PAYLAŞIM</p><div class="post-choices">${postTypes.map(([icon, title, text]) => `<button data-post="${esc(text)}" ${life.socialMedia.postsThisAge >= 3 ? "disabled" : ""}><span>${icon}</span><b>${title}</b><small>${life.socialMedia.postsThisAge >= 3 ? "Yeni içerik için yaş atla" : "Video paylaş →"}</small></button>`).join("")}</div><p class="social-limit-note">Her yaşta en fazla üç içerik paylaşabilirsin. Takipçi ve görüntülenme zamanla büyür; gelir yalnızca gerçekçi ölçekte, yaş atlayınca ödenir.</p></div>` :
+    ${eligible ? `<div class="post-card"><p class="eyebrow">VİDEO FİKİRLERİ · ${life.socialMedia.postsThisAge}/3 PAYLAŞIM</p><div class="post-choices">${postIdeas.map(([icon, title], index) => `<button data-post="${index}" ${life.socialMedia.postsThisAge >= 3 ? "disabled" : ""}><span>${icon}</span><b>${esc(title)}</b><small>${life.socialMedia.postsThisAge >= 3 ? "Yeni içerik için yaş atla" : "Video paylaş →"}</small></button>`).join("")}</div><p class="social-limit-note">Her yaşta en fazla üç video paylaşabilirsin. Alora topluluğundan her videoya farklı yorumlar gelir.</p></div>` :
       `<div class="locked-card"><span>🔒</span><div><b>Sosyal medya 13 yaşında açılır</b><p>O zamana kadar hayatının güzel anlarını yaşamaya devam et.</p></div><small>${13 - life.age} yıl kaldı</small></div>`}
-    <section class="section-block"><div class="section-heading"><div><p class="eyebrow">YALNIZCA SENİN AKIŞIN</p><h2>Paylaşımların ve anıların</h2></div></div><div class="feed-list social-feed">${life.feed.filter((item) => item.icon === "📱").length ? life.feed.filter((item) => item.icon === "📱").map(feedItem).join("") : `<div class="empty-state"><span>✧</span><p>Henüz paylaşımın yok. Güzel bir anın olduğunda burada saklanır.</p></div>`}</div></section>`;
+    <section class="section-block"><div class="section-heading"><div><p class="eyebrow">YALNIZCA SENİN AKIŞIN</p><h2>Videolar ve yorumlar</h2></div></div><div class="social-post-list">${postHistory.length ? postHistory.map((post) => `<article class="social-post"><div class="social-post-heading"><span class="social-post-avatar">${esc(life.firstName.slice(0, 1).toLocaleUpperCase("tr-TR"))}</span><div><b>${esc(life.name)}</b><small>${post.age}. yaş · ${esc(post.title)}</small></div><span class="social-post-icon">▶</span></div><p class="social-post-caption">${esc(post.text)}</p><div class="social-post-metrics"><span>▶ ${post.views.toLocaleString("tr-TR")} görüntülenme</span><span>♥ ${post.likes.toLocaleString("tr-TR")} beğeni</span><span>＋ ${post.followers.toLocaleString("tr-TR")} takipçi</span></div><div class="comment-list"><b>Yorumlar</b>${post.comments.map((comment) => `<p><strong>${esc(comment.name)}</strong> ${esc(comment.text)}</p>`).join("")}</div></article>`).join("") : `<div class="empty-state"><span>✧</span><p>Henüz videon yok. Bir fikir seçip ilk paylaşımını yap.</p></div>`}</div></section>`;
 }
 
+function vacationsPage() {
+  const companions = [
+    ["solo", "Tek başıma"],
+    ["family", "Annem ve babamla"],
+    ["mother", "Annemle"],
+    ["father", "Babamla"],
+    ...life.family.members.filter((member) => member.id.startsWith("sibling"))
+      .map((member) => [member.id, `${member.name} (kardeşim)`]),
+    ["partner", life.relationship ? `${life.relationship.name} (sevgilim)` : "Sevgilim (önce ilişki kur)"],
+  ];
+  return `<div class="page-intro"><p class="eyebrow">BİRAZ NEFES, YENİ ANILAR</p><h1>Tatil zamanı</h1><p>Bir otel seç, kaç gece kalacağını ve kiminle gideceğini belirle. Tatil zihnini dinlendirir; masrafı konaklama ve kişi sayısına göre cüzdanından düşer.</p></div>
+    <div class="vacation-summary"><div class="balance-panel"><small>Zihinsel iyi oluş</small><b>${life.stats.mental}/100</b><p>Dinlenme ve keyifli zamanla yükselir</p></div><div class="balance-panel"><small>Bu hayattaki tatiller</small><b>${life.vacations.length}</b><p>Yeni anı biriktirmeye devam et</p></div><div class="balance-panel"><small>Cüzdan bakiyesi</small><b>${money(life.money)}</b><p>Konaklama bedeli buradan ödenir</p></div></div>
+    <div class="hotel-grid">${vacationHotels.map((hotel) => `<article class="hotel-card"><div class="hotel-art hotel-${hotel.theme}" role="img" aria-label="${esc(hotel.city)} tatil manzarası"><span>${hotel.image}</span><small>${esc(hotel.city)}</small></div><div class="hotel-copy"><p class="eyebrow">GECELİK · ${money(hotel.nightlyRate)}</p><h2>${esc(hotel.name)}</h2><label>Kaç gece?<select id="nights-${hotel.id}">${[1, 2, 3, 4, 5, 6, 7].map((nights) => `<option value="${nights}">${nights} gece · ${money(hotel.nightlyRate * nights)}'den başlayan</option>`).join("")}</select></label><label>Kimle gideceksin?<select id="companion-${hotel.id}">${companions.map(([id, label]) => `<option value="${id}" ${id === "partner" && (life.age < 16 || !life.relationship) ? "disabled" : ""}>${esc(label)}</option>`).join("")}</select></label><button class="primary-button" data-action="vacation" data-hotel="${hotel.id}">Tatil planla →</button></div></article>`).join("")}</div>
+    <section class="section-block"><div class="section-heading"><div><p class="eyebrow">YOL ANILARI</p><h2>Gittiğin tatiller</h2></div></div><div class="vacation-history">${life.vacations.length ? life.vacations.map((trip) => `<article><span>🏖️</span><div><b>${esc(trip.hotelName)}</b><small>${trip.age}. yaş · ${trip.nights} gece · ${esc(companions.find(([id]) => id === trip.companion)?.[1] || "tek başına")}</small></div><strong>${money(trip.cost)}</strong></article>`).join("") : `<div class="empty-state"><p>Henüz tatil anın yok. İlk yolculuğunu planla!</p></div>`}</div></section>`;
+}
 function settingsPage() {
   return `<div class="page-intro"><p class="eyebrow">SENİN OYUNUN, SENİN KONTROLÜN</p><h1>Ayarlar</h1><p>Kayıt dosyanı yönet ve uygulamayı istediğin gibi kullan.</p></div>
     <div class="settings-grid">
@@ -425,6 +466,7 @@ function render() {
     bank: bankPage,
     market: marketPage,
     relations: relationsPage,
+    vacations: vacationsPage,
     social: socialPage,
     settings: settingsPage,
   };
@@ -458,9 +500,11 @@ function perform(activity, options = {}) {
   try {
     const result = doActivity(life, activity, options);
     notice = result.message;
+    playSound(/kaybettin|başarısız|kazanamadın/i.test(result.message) ? "negative" : "positive");
     persist();
   } catch (error) {
     notice = error.message;
+    playSound("error");
   }
   render();
 }
@@ -468,9 +512,11 @@ function perform(activity, options = {}) {
 function commit(action) {
   try {
     notice = action();
+    playSound("positive");
     persist();
   } catch (error) {
     notice = error.message;
+    playSound("error");
   }
   render();
 }
@@ -576,17 +622,23 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.choice !== undefined) {
     try {
+      const option = life.lastEvent?.event.options[Number(target.dataset.choice)];
+      const effect = option?.effect || {};
+      const netChange = Object.values(effect).filter((value) => typeof value === "number").reduce((sum, value) => sum + value, 0);
       chooseEvent(life, Number(target.dataset.choice));
+      playSound(netChange < 0 ? "negative" : "positive");
       modalError = "";
       persist();
     } catch (error) {
       modalError = error.message;
+      playSound("error");
     }
     render();
     return;
   }
   if (target.dataset.post) {
-    perform("social", { text: target.dataset.post });
+    const [, title, text] = postIdeas[Number(target.dataset.post)] || [];
+    if (title) perform("social", { title, text });
     return;
   }
   switch (target.dataset.action) {
@@ -594,6 +646,7 @@ app.addEventListener("click", (event) => {
     case "catalog": perform("catalog", { id: target.dataset.id }); break;
     case "exercise": perform("exercise"); break;
     case "study": perform("study"); break;
+    case "mindful": perform("mindful"); break;
     case "work": perform("work"); break;
     case "date": perform("date"); break;
     case "activity-page": activityPage = Number(target.dataset.page); render(); break;
@@ -613,6 +666,13 @@ app.addEventListener("click", (event) => {
     case "relationship-action":
       commit(() => performRelationshipAction(life, target.dataset.kind));
       break;
+    case "vacation": {
+      const hotelId = target.dataset.hotel;
+      const nights = document.getElementById(`nights-${hotelId}`)?.value;
+      const companion = document.getElementById(`companion-${hotelId}`)?.value;
+      commit(() => performVacation(life, { hotelId, nights, companion }).message);
+      break;
+    }
     case "university":
       commit(() => chooseUniversityProgram(life, target.dataset.program));
       break;
@@ -638,6 +698,7 @@ app.addEventListener("click", (event) => {
       break;
     case "breakup":
       if (window.confirm(`${life.relationship?.name || "Bu kişi"} ile yollarınızı ayırmak istiyor musun?`)) perform("breakup");
+      else playSound("negative");
       break;
     case "clear-notice": notice = ""; render(); break;
     case "export": downloadSave(); break;
@@ -650,7 +711,7 @@ app.addEventListener("click", (event) => {
       updateState = { ...updateState, status: "checking", message: "Yeni sürüm kontrol ediliyor…" };
       render();
       window.aloraUpdater?.checkForUpdates().catch((error) => {
-        updateState = { status: "error", message: `Güncelleme kontrol edilemedi: ${error.message}` };
+        updateState = { status: "error", message: error.message };
         render();
       });
       if (!window.aloraUpdater) {
@@ -662,7 +723,7 @@ app.addEventListener("click", (event) => {
       updateState = { ...updateState, status: "downloading", message: "Güncelleme indiriliyor…" };
       render();
       window.aloraUpdater?.downloadAndInstall().catch((error) => {
-        updateState = { status: "error", message: `Güncelleme indirilemedi: ${error.message}` };
+        updateState = { status: "error", message: error.message };
         render();
       });
       break;
@@ -705,6 +766,8 @@ render();
 if (window.aloraUpdater) {
   window.aloraUpdater.onStatus((status) => {
     updateState = status;
+    if (status.status === "available") playSound("notify");
+    else if (status.status === "error") playSound("error");
     if (life && tab === "settings") render();
     else if (status.status === "available") {
       notice = `Alora Hayat ${status.version} güncellemesi hazır. İstersen Ayarlar'dan indirip kurabilirsin.`;
@@ -712,6 +775,6 @@ if (window.aloraUpdater) {
     }
   });
   window.aloraUpdater.checkForUpdates().catch((error) => {
-    updateState = { status: "error", message: `Güncelleme kontrol edilemedi: ${error.message}` };
+    updateState = { status: "error", message: error.message };
   });
 }

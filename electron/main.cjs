@@ -40,6 +40,14 @@ function publishUpdateStatus(status) {
   }
 }
 
+function formatUpdateError(error) {
+  const isNotFound = error.statusCode === 404 || /HttpError:\s*404|\b404\b/.test(error.message || "");
+  if (isNotFound) {
+    return "Güncelleme deposuna erişilemiyor (404). GitHub deposu özel olduğu için güncelleme akışı dışarıdan görünmüyor; herkese açık bir güncelleme adresi gerekir.";
+  }
+  return `Güncelleme kontrol edilemedi: ${error.message}`;
+}
+
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.on("checking-for-update", () => publishUpdateStatus({
@@ -67,21 +75,29 @@ autoUpdater.on("update-downloaded", (info) => publishUpdateStatus({
 }));
 autoUpdater.on("error", (error) => publishUpdateStatus({
   status: "error",
-  message: `Güncelleme kontrol edilemedi: ${error.message}`,
+  message: formatUpdateError(error),
 }));
 
 ipcMain.handle("updates:check", async () => {
   if (!app.isPackaged || process.platform !== "win32") {
     throw new Error("Güncelleme denetimi yalnızca kurulu Windows uygulamasında kullanılabilir.");
   }
-  await autoUpdater.checkForUpdates();
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    throw new Error(formatUpdateError(error));
+  }
   return true;
 });
 ipcMain.handle("updates:download", async () => {
   if (!app.isPackaged || process.platform !== "win32") {
     throw new Error("Güncelleme yalnızca kurulu Windows uygulamasında indirilebilir.");
   }
-  await autoUpdater.downloadUpdate();
+  try {
+    await autoUpdater.downloadUpdate();
+  } catch (error) {
+    throw new Error(formatUpdateError(error));
+  }
   return true;
 });
 ipcMain.handle("updates:install", () => {

@@ -1,6 +1,7 @@
 import {
   activityBlueprints, activityCompanions, activityTotal, businessSectors, contestTypes,
   ageEventBank, familyGifts, familyNamePools, getActivityCatalog, professions, stockMarket, universityPrograms,
+  vacationHotels,
 } from "./catalog.js";
 
 export const SAVE_KEY = "alora-hayat-save-v1";
@@ -11,6 +12,7 @@ export const initialStats = () => ({
   intelligence: 52,
   discipline: 50,
   social: 45,
+  mental: 68,
 });
 
 const randomItem = (items) => items[Math.floor(Math.random() * items.length)];
@@ -125,8 +127,14 @@ export function migrateLife(life) {
       ...life.socialMedia,
       postsThisAge: Number.isInteger(life.socialMedia?.postsThisAge) ? life.socialMedia.postsThisAge : 0,
       lastPostAge: Number.isInteger(life.socialMedia?.lastPostAge) ? life.socialMedia.lastPostAge : null,
+      postHistory: Array.isArray(life.socialMedia?.postHistory) ? life.socialMedia.postHistory : [],
     };
     life.version = 3;
+  }
+  if (life.version === 3) {
+    life.stats = { ...initialStats(), ...life.stats };
+    life.socialMedia = { ...life.socialMedia, postHistory: Array.isArray(life.socialMedia?.postHistory) ? life.socialMedia.postHistory : [] };
+    life.vacations = Array.isArray(life.vacations) ? life.vacations : [];
   }
   return life;
 }
@@ -138,7 +146,7 @@ export function isValidLife(life) {
   if (!record(life) || life.version !== 3 || typeof life.name !== "string" ||
       typeof life.firstName !== "string" || typeof life.lastName !== "string" ||
       typeof life.birthDate !== "string" || !integer(life.age) || !finite(life.money) || !finite(life.bank)) return false;
-  if (!record(life.stats) || !["health", "happiness", "intelligence", "discipline", "social"].every(
+  if (!record(life.stats) || !["health", "happiness", "intelligence", "discipline", "social", "mental"].every(
     (key) => Number.isFinite(life.stats[key]) && life.stats[key] >= 0 && life.stats[key] <= 100,
   )) return false;
   if (!record(life.education) || typeof life.education.stage !== "string" || !integer(life.education.grade) ||
@@ -166,7 +174,15 @@ export function isValidLife(life) {
   if (!Array.isArray(life.education.exams) ||
       !record(life.socialMedia) || !finite(life.socialMedia.followers) || !finite(life.socialMedia.views) ||
       !finite(life.socialMedia.likes) || !finite(life.socialMedia.posts) || !finite(life.socialMedia.incomeMonthly) ||
-      !integer(life.socialMedia.postsThisAge) ||
+      !integer(life.socialMedia.postsThisAge) || !Array.isArray(life.socialMedia.postHistory) ||
+      !life.socialMedia.postHistory.every((post) => record(post) && integer(post.age) &&
+        typeof post.title === "string" && typeof post.text === "string" && integer(post.views) &&
+        integer(post.likes) && integer(post.followers) && Array.isArray(post.comments) &&
+        post.comments.every((comment) => record(comment) && typeof comment.name === "string" && typeof comment.text === "string")) ||
+      !Array.isArray(life.vacations) ||
+      !life.vacations.every((vacation) => record(vacation) && typeof vacation.hotelId === "string" &&
+        typeof vacation.hotelName === "string" && integer(vacation.age) && integer(vacation.nights) &&
+        integer(vacation.cost) && typeof vacation.companion === "string") ||
       !record(life.finance) || !(life.finance.loan === null || (record(life.finance.loan) &&
         finite(life.finance.loan.balance) && Number.isFinite(life.finance.loan.interestRate) &&
         life.finance.loan.interestRate >= 0 && integer(life.finance.loan.years))) ||
@@ -227,8 +243,9 @@ export function createLife({ firstName, lastName, birthDate }) {
     },
     career: { job: null, salary: 0, experience: 0, professionId: null, license: { status: "Alınmadı", score: null } },
     family: createFamily(firstName.trim()),
-    socialMedia: { followers: 0, views: 0, likes: 0, posts: 0, incomeMonthly: 0, postsThisAge: 0, lastPostAge: null },
+    socialMedia: { followers: 0, views: 0, likes: 0, posts: 0, incomeMonthly: 0, postsThisAge: 0, lastPostAge: null, postHistory: [] },
     finance: createFinance(),
+    vacations: [],
     activitiesCompleted: 0,
     relationship: null,
     military: "Henüz karar verilmedi",
@@ -944,7 +961,7 @@ function updateEconomyForYear(life) {
 }
 
 function applyEffect(life, effect) {
-  for (const key of ["health", "happiness", "intelligence", "discipline", "social"]) {
+  for (const key of ["health", "happiness", "intelligence", "discipline", "social", "mental"]) {
     if (effect[key]) life.stats[key] = clamp(life.stats[key] + effect[key]);
   }
   const education = life.education;
@@ -1108,6 +1125,10 @@ export function doActivity(life, activity, options = {}) {
     const likes = Math.max(1, Math.round(views * (0.012 + life.stats.social / 2500)));
     const viral = Math.random() < 0.008 + life.stats.social / 4000;
     const newFollowers = Math.max(0, Math.round(likes * 0.035) + randomInt(0, 2) + (viral ? randomInt(25, 180) : 0));
+    const comments = Array.from({ length: randomInt(2, 4) }, () => {
+      const comment = randomItem(socialComments);
+      return { name: randomItem(socialCommenters), text: comment };
+    });
     life.socialMedia.posts += 1;
     life.socialMedia.postsThisAge += 1;
     life.socialMedia.lastPostAge = life.age;
@@ -1119,7 +1140,18 @@ export function doActivity(life, activity, options = {}) {
       : 0;
     life.stats.social = clamp(life.stats.social + 2);
     life.stats.happiness = clamp(life.stats.happiness + 1);
-    result.message = `${options.text || "Bugün güzel bir anını"} Alora akışında paylaştın. ${views.toLocaleString("tr-TR")} görüntülenme, ${likes} beğeni${newFollowers ? ` ve ${newFollowers} yeni takipçi` : ""}.${viral ? " Paylaşımın beklenmedik biçimde yayıldı!" : ""}`;
+    life.socialMedia.postHistory.unshift({
+      age: life.age,
+      title: String(options.title || "Günlük video").slice(0, 60),
+      text: String(options.text || "Bugün güzel bir anını").slice(0, 180),
+      views,
+      likes,
+      followers: newFollowers,
+      comments,
+      viral,
+    });
+    life.socialMedia.postHistory = life.socialMedia.postHistory.slice(0, 30);
+    result.message = `${options.title || "Videon"} paylaşıldı: ${views.toLocaleString("tr-TR")} görüntülenme, ${likes} beğeni${newFollowers ? ` ve ${newFollowers} yeni takipçi` : ""}.${viral ? " Paylaşımın beklenmedik biçimde yayıldı!" : ""}`;
     result.icon = "📱";
   } else if (activity === "date") {
     if (!life.relationship) {
@@ -1160,8 +1192,14 @@ export function doActivity(life, activity, options = {}) {
   } else if (activity === "exercise") {
     life.stats.health = clamp(life.stats.health + 5);
     life.stats.happiness = clamp(life.stats.happiness + 2);
+    life.stats.mental = clamp(life.stats.mental + 2);
     result.message = "Hareketli bir gün geçirdin. Kendini daha iyi hissediyorsun.";
     result.icon = "🏃";
+  } else if (activity === "mindful") {
+    life.stats.mental = clamp(life.stats.mental + 6);
+    life.stats.happiness = clamp(life.stats.happiness + 2);
+    result.message = "Kendine kısa bir mola verdin. Zihnin sakinleşti, nefesine odaklandın.";
+    result.icon = "🧘";
   } else if (activity === "deposit" || activity === "withdraw") {
     const amount = Math.floor(Number(options.amount));
     const source = activity === "deposit" ? "money" : "bank";
@@ -1194,6 +1232,81 @@ export function doActivity(life, activity, options = {}) {
   life.activitiesCompleted += 1;
   addFeed(life, result.icon, result.message);
   return result;
+}
+
+const socialCommenters = ["Eylül", "Mert", "Lina", "Bora", "İdil", "Kaan", "Duru", "Efe", "Ada", "Cem"];
+const socialComments = [
+  "Bu video günümü güzelleştirdi 🌿",
+  "Devamı gelsin, çok samimi olmuş!",
+  "En sevdiğim anı böyle kaydetmek ✨",
+  "Fikrini çok güzel anlatmışsın.",
+  "Bunu görünce ben de denemek istedim!",
+  "Işık ve müzik çok iyi olmuş 🎶",
+  "Bir sonraki videoda devamını anlatır mısın?",
+  "Emek verdiğin belli, eline sağlık 🙌",
+  "Güzel bir hatıra olmuş, sakla bunu.",
+  "Şu mekânın adını da paylaşır mısın?",
+  "İçten anlatımını seviyorum.",
+  "Küçük anlar gerçekten en güzeli 💛",
+  "Bu konuda başka bir video da çekebilirsin.",
+  "Arkadaşlarıma da gönderdim!",
+];
+
+export function performVacation(life, { hotelId, nights, companion = "solo" }) {
+  const hotel = vacationHotels.find((item) => item.id === hotelId);
+  const stay = Math.floor(Number(nights));
+  if (!hotel) throw new Error("Seçilen otel bulunamadı.");
+  if (!Number.isInteger(stay) || stay < 1 || stay > 7) throw new Error("Tatil süresi 1 ile 7 gece arasında olmalı.");
+  if (typeof companion !== "string") throw new Error("Geçerli bir tatil arkadaşı seç.");
+
+  let companionIds = [];
+  if (companion === "family") companionIds = ["mother", "father"];
+  else if (companion === "mother" || companion === "father" || companion === "partner" || companion.startsWith("sibling")) {
+    companionIds = [companion];
+  } else if (companion !== "solo") throw new Error("Geçerli bir tatil arkadaşı seç.");
+
+  if (companionIds.includes("partner") && (!life.relationship || life.age < 16)) {
+    throw new Error("Sevgilinle tatil için 16 yaşında olmalı ve bir ilişkin bulunmalı.");
+  }
+  if (companionIds.some((id) => !["partner"].includes(id) && !life.family.members.some((member) => member.id === id))) {
+    throw new Error("Seçtiğin aile üyesi bulunamadı.");
+  }
+
+  const guestCount = companionIds.length + 1;
+  const cost = Math.round(hotel.nightlyRate * stay * (1 + Math.max(0, guestCount - 1) * 0.18));
+  if (life.money < cost) throw new Error(`Bu tatil için cüzdanında ${cost.toLocaleString("tr-TR")} ₺ olmalı.`);
+
+  life.money -= cost;
+  recordTransaction(life, "expense", cost, `${hotel.name} · ${stay} gece tatil`);
+  const recovery = Math.min(12, 4 + stay * 2);
+  life.stats.mental = clamp(life.stats.mental + recovery + (companionIds.length ? 2 : 0));
+  life.stats.happiness = clamp(life.stats.happiness + Math.min(10, 3 + stay));
+  life.stats.health = clamp(life.stats.health + Math.min(5, Math.floor(stay / 2)));
+  if (companionIds.includes("partner") && life.relationship) {
+    life.relationship.closeness = clamp(life.relationship.closeness + 7);
+    life.relationship.sharedMoments += 1;
+  }
+  for (const id of companionIds) {
+    if (id !== "partner") adjustBond(life, id, 5);
+  }
+
+  const companions = companionIds.length
+    ? companionIds.map((id) => id === "partner" ? life.relationship.name :
+      life.family.members.find((member) => member.id === id).name).join(", ")
+    : "tek başına";
+  const vacation = {
+    hotelId,
+    hotelName: hotel.name,
+    age: life.age,
+    nights: stay,
+    cost,
+    companion,
+  };
+  life.vacations.unshift(vacation);
+  life.vacations = life.vacations.slice(0, 30);
+  const message = `${hotel.name} tatilinde ${stay} gece kaldın (${companions}). Zihnin dinlendi, ${cost.toLocaleString("tr-TR")} ₺ harcadın.`;
+  addFeed(life, "🏖️", message);
+  return { ...vacation, message };
 }
 
 export function saveLife(life, storage = globalThis.localStorage) {

@@ -121,6 +121,17 @@ export const contestTypes = [
   { id: "startup", name: "Genç girişimci sunum günü", fee: 700, prize: 30000, stat: "discipline", minAge: 18 },
 ];
 
+export const vacationHotels = [
+  { id: "antalya", name: "Akdeniz Sahil Resort", city: "Antalya · deniz kenarı", nightlyRate: 10000, image: "🌊", theme: "coast" },
+  { id: "kapadokya", name: "Peribacası Taş Otel", city: "Kapadokya · vadi manzarası", nightlyRate: 12500, image: "🎈", theme: "balloon" },
+  { id: "sapanca", name: "Göl Kenarı Bungalov", city: "Sapanca · orman ve göl", nightlyRate: 8500, image: "🌲", theme: "forest" },
+  { id: "izmir", name: "Ege Eski Şehir Konağı", city: "İzmir · sahil ve çarşı", nightlyRate: 9200, image: "⛵", theme: "aegean" },
+  { id: "istanbul", name: "Boğaz Manzaralı Otel", city: "İstanbul · şehir kaçamağı", nightlyRate: 18000, image: "🌉", theme: "city" },
+  { id: "yayla", name: "Bulutların Üstünde Yayla Evi", city: "Karadeniz · yayla havası", nightlyRate: 7800, image: "🏔️", theme: "mountain" },
+  { id: "termal", name: "Ilık Su Termal Oteli", city: "Afyon · dinlenme ve spa", nightlyRate: 14500, image: "♨️", theme: "thermal" },
+  { id: "bodrum", name: "Mavi Koy Butik Otel", city: "Bodrum · koy ve gün batımı", nightlyRate: 24000, image: "🌅", theme: "sunset" },
+];
+
 export const stockMarket = [
   { symbol: "KIVILCIM", name: "Kıvılcım Teknoloji", initialPrice: 920 },
   { symbol: "MAVIDALGA", name: "Mavi Dalga Enerji", initialPrice: 680 },

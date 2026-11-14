@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import {
   activityCount, advanceYear, applyForCareer, beginExam, canDo, chooseEvent, chooseUniversityProgram,
   createLife, doActivity, enterContest, getActivityOptions, getAgeEvent, isValidLife, loadLife,
-  manageLoan, migrateLife, performFamilyAction, performRelationshipAction, saveLife, startBusiness, submitExam,
+  manageLoan, migrateLife, performFamilyAction, performRelationshipAction, performVacation, saveLife, startBusiness, submitExam,
   takeExam, tradeStock, SAVE_KEY,
 } from "./game.js";
-import { universityPrograms } from "./catalog.js";
+import { universityPrograms, vacationHotels } from "./catalog.js";
 
 function fresh() {
   return createLife({ firstName: "Ada", lastName: "Yılmaz", birthDate: "2020-03-10" });
@@ -240,6 +240,52 @@ test("sosyal video paylaşımı yaş başına sınırlıdır ve gelir üst sın�
   assert.throws(() => doActivity(life, "social", { text: "Dördüncü video" }), /üç video/);
   assert.ok(life.socialMedia.incomeMonthly <= 50000);
   assert.equal(life.socialMedia.postsThisAge, 3);
+});
+
+test("farklı sosyal videolar yorum ve etkileşim geçmişiyle kaydedilir", () => {
+  const life = fresh();
+  life.age = 13;
+  const result = doActivity(life, "social", { title: "Mutfakta ne var?", text: "Yeni bir tarif denedim." });
+  const post = life.socialMedia.postHistory[0];
+  assert.match(result.message, /Mutfakta ne var\?/);
+  assert.equal(post.title, "Mutfakta ne var?");
+  assert.equal(post.text, "Yeni bir tarif denedim.");
+  assert.ok(post.comments.length >= 2 && post.comments.length <= 4);
+  assert.ok(post.comments.every((comment) => comment.name && comment.text));
+  assert.ok(isValidLife(life));
+});
+
+test("otel tatili seçilen kişi ve gece sayısına göre ücret alır, zihin ve yakınlığı artırır", () => {
+  const life = fresh();
+  life.age = 25;
+  life.money = 100000;
+  const before = life.age;
+  const beforeMental = life.stats.mental;
+  const mother = life.family.members.find((member) => member.id === "mother");
+  const beforeCloseness = mother.closeness;
+  const result = performVacation(life, { hotelId: "antalya", nights: 2, companion: "mother" });
+  assert.equal(result.cost, Math.round(vacationHotels.find((hotel) => hotel.id === "antalya").nightlyRate * 2 * 1.18));
+  assert.equal(life.age, before);
+  assert.equal(life.money, 100000 - result.cost);
+  assert.ok(life.stats.mental > beforeMental);
+  assert.ok(mother.closeness > beforeCloseness);
+  assert.equal(life.vacations.length, 1);
+  assert.ok(isValidLife(life));
+  assert.throws(() => performVacation(life, { hotelId: "antalya", nights: 0 }), /1 ile 7/);
+});
+
+test("eski hayat kayıtları zihin göstergesi, tatil geçmişi ve yorum alanlarına yükseltilir", () => {
+  const legacy = fresh();
+  delete legacy.stats.mental;
+  delete legacy.vacations;
+  delete legacy.socialMedia.postHistory;
+  const migrated = migrateLife(legacy);
+  assert.equal(migrated.stats.mental, 68);
+  assert.deepEqual(migrated.vacations, []);
+  assert.deepEqual(migrated.socialMedia.postHistory, []);
+  assert.ok(isValidLife(migrated));
+  doActivity(migrated, "mindful");
+  assert.equal(migrated.stats.mental, 74);
 });
 
 test("kredi, hisse alım-satımı ve yarışma katılımı bakiyeyi tutarlı yönetir", () => {

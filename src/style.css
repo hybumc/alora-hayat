@@ -125,7 +125,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .section-heading .eyebrow { margin-bottom: 5px; }
 .section-heading h2 { margin: 0; color: #45403b; font: 700 19px Manrope, sans-serif; letter-spacing: -.025em; }
 .soft-label { padding: 6px 9px; color: #9a8c7c; border-radius: 7px; background: #f0ece4; font-size: 9px; }
-.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; }
+.stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 11px; }
 .profile-strip { display: flex; align-items: center; gap: 24px; margin-top: 15px; padding: 14px 17px; border: 1px solid #eeece6; border-radius: 14px; background: #fffefa; }
 .profile-heading { display: flex; align-items: center; gap: 10px; min-width: 180px; }
 .profile-avatar { width: 39px !important; height: 39px !important; }
@@ -403,6 +403,56 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 }
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+.vacation-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; margin-bottom: 16px; }
+.hotel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.hotel-card { overflow: hidden; border: 1px solid #eeece6; border-radius: 16px; background: #fffefa; box-shadow: 0 5px 16px #51402b08; animation: rise .35s ease both; }
+.hotel-art { position: relative; display: grid; place-items: center; min-height: 150px; overflow: hidden; background: linear-gradient(155deg, #9cd3d2, #f7d8aa 58%, #e8ab85); }
+.hotel-art:before, .hotel-art:after { position: absolute; content: ""; width: 140%; height: 75px; bottom: -34px; border-radius: 50%; background: #557f66a6; transform: rotate(-8deg); }
+.hotel-art:after { bottom: -55px; background: #345d55c9; transform: rotate(7deg); }
+.hotel-art > span { z-index: 1; font-size: 58px; filter: drop-shadow(0 8px 8px #2b3c3526); animation: float 5s ease-in-out infinite; }
+.hotel-art > small { position: absolute; z-index: 2; right: 12px; bottom: 10px; padding: 6px 9px; color: #fff; border: 1px solid #ffffff50; border-radius: 8px; background: #263d3c75; font-size: 9px; backdrop-filter: blur(7px); }
+.hotel-balloon { background: linear-gradient(160deg, #b2d8e6 0%, #edc69c 55%, #c47770 100%); }
+.hotel-forest { background: linear-gradient(160deg, #abd2d3, #bdd6ad 55%, #6f9c72); }
+.hotel-aegean { background: linear-gradient(160deg, #a5d6e5, #e5dfae 58%, #5faaa5); }
+.hotel-city { background: linear-gradient(160deg, #a7bdd3, #ead8c3 55%, #bb8b7b); }
+.hotel-mountain { background: linear-gradient(160deg, #b5dce2, #f0e2c6 58%, #93aa92); }
+.hotel-thermal { background: linear-gradient(160deg, #d6c6e7, #f5dfcc 60%, #96c8c0); }
+.hotel-sunset { background: linear-gradient(160deg, #f5c5a5, #e9947d 55%, #7f7f9d); }
+.hotel-copy { display: grid; gap: 9px; padding: 16px; }
+.hotel-copy .eyebrow { margin-bottom: 0; }
+.hotel-copy h2 { margin: 0; color: #51483f; font: 700 15px Manrope, "Segoe UI", sans-serif; }
+.hotel-copy label { display: grid; gap: 5px; color: #83786c; font-size: 9px; font-weight: 700; }
+.hotel-copy select { width: 100%; min-height: 37px; padding: 0 9px; color: #63584d; border: 1px solid #ede8df; border-radius: 9px; background: #fff; font: inherit; font-size: 10px; }
+.hotel-copy .primary-button { min-height: 38px; margin-top: 3px; font-size: 10px; }
+.vacation-history { display: grid; gap: 8px; }
+.vacation-history article { display: flex; align-items: center; gap: 11px; padding: 12px; border: 1px solid #eeece6; border-radius: 12px; background: #fffefa; }
+.vacation-history article > span { font-size: 21px; }
+.vacation-history article > div { display: grid; gap: 4px; }
+.vacation-history article b { color: #625549; font-size: 10px; }
+.vacation-history article small { color: #968b80; font-size: 9px; }
+.vacation-history article strong { margin-left: auto; color: #8c6652; font-size: 10px; }
+.social-post-list { display: grid; gap: 12px; }
+.social-post { padding: 16px; border: 1px solid #eeece6; border-radius: 15px; background: #fffefa; animation: rise .3s ease both; }
+.social-post-heading { display: flex; align-items: center; gap: 9px; }
+.social-post-heading > div { display: grid; gap: 4px; }
+.social-post-heading b { color: #5b5149; font-size: 10px; }
+.social-post-heading small { color: #9c9186; font-size: 9px; }
+.social-post-avatar { display: grid; place-items: center; width: 34px; height: 34px; color: #fff; border-radius: 12px; background: linear-gradient(145deg, #e7ad8a, #bd7963); font-weight: 700; }
+.social-post-icon { display: grid; place-items: center; width: 29px; height: 29px; margin-left: auto; color: #fff; padding-left: 2px; border-radius: 50%; background: #bd7963; font-size: 10px; }
+.social-post-caption { margin: 13px 0; color: #685e55; font-size: 11px; line-height: 1.65; }
+.social-post-metrics { display: flex; flex-wrap: wrap; gap: 8px 15px; padding: 10px 0; color: #927d6d; border-top: 1px solid #f1eee8; border-bottom: 1px solid #f1eee8; font-size: 9px; }
+.comment-list { display: grid; gap: 8px; padding-top: 11px; }
+.comment-list > b { color: #9b725e; font-size: 9px; }
+.comment-list p { margin: 0; padding: 8px 10px; color: #756a61; border-radius: 9px; background: #faf7f2; font-size: 9px; line-height: 1.5; }
+.comment-list p strong { margin-right: 4px; color: #665348; }
+
+@media (max-width: 800px) {
+  .hotel-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .vacation-summary { grid-template-columns: 1fr; }
 }
 
 /* Alora 0.2 visual refresh */
