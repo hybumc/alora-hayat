@@ -30,7 +30,7 @@ Kurulum dosyası sürüm numarasına göre `release\Alora-Hayat-Setup-<sürüm>-
 
 ## Güncelleme
 
-Kurulu Windows sürümleri açılışta GitHub Releases sayfasında yeni sürüm arar. Yeni sürüm bulunduğunda uyarı görünür; **Ayarlar → Uygulama güncellemeleri** bölümünden isteğe bağlı olarak indirip kurabilirsin. Güncelleme kayıtlarını korur. Otomatik güncelleme için depo ve Release varlıkları uygulamanın çalıştığı cihazdan herkese açık erişilebilir olmalıdır. Bu depo şu anda özeldir; bu nedenle GitHub güncelleme akışı dışarıdan 404 döndürür ve otomatik güncelleme çalışmaz. Depo herkese açılmadan veya herkese açık bir güncelleme sunucusu ayarlanmadan bu denetim düzeltilemez. v0.1.0 kurulumlarında otomatik güncelleme denetimi yoktur.
+Kurulu Windows sürümleri açılışta GitHub Releases sayfasında yeni sürüm arar. Yeni sürüm bulunduğunda uyarı görünür; **Ayarlar → Uygulama güncellemeleri** bölümünden isteğe bağlı olarak indirip kurabilirsin. Güncelleme kayıtlarını korur. Depo ve Release varlıkları artık herkese açık erişilebilir; bu nedenle GitHub güncelleme akışı ve yeni kurucular indirilebilir. v0.1.0 kurulumlarında otomatik güncelleme denetimi yoktur; bu sürüm bir defaya mahsus elle kurulmalıdır.
 
 Geliştirme sırasında masaüstü uygulamasını `npm.cmd run desktop:dev`, tarayıcı arayüzünü `npm.cmd run dev` ile başlat. Oyun testleri `npm.cmd test`, web arayüzünün üretim derlemesi `npm.cmd run build` komutlarıyla çalışır.
 
