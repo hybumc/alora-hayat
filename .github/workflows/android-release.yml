@@ -59,7 +59,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ALORA_ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ALORA_ANDROID_KEYSTORE_PASSWORD }}
-        run: ./gradlew --no-daemon assembleRelease
+        run: bash gradlew --no-daemon assembleRelease
       - name: Name APK
         run: |
           version=$(node -p "require('./package.json').version")
